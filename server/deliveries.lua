@@ -5,11 +5,11 @@ exports('GetDealers', function()
     return sharedConfig.dealers
 end)
 
-lib.callback.register('qb-drugs:server:RequestConfig', function()
+lib.callback.register('qbx_drugs:server:RequestConfig', function()
     return sharedConfig.dealers
 end)
 
-RegisterNetEvent('qb-drugs:server:randomPoliceAlert', function()
+RegisterNetEvent('qbx_drugs:server:randomPoliceAlert', function()
     local player = exports.qbx_core:GetPlayer(source)
     if not player then return end
     if config.policeCallChance >= math.random(1, 100) then
@@ -17,7 +17,7 @@ RegisterNetEvent('qb-drugs:server:randomPoliceAlert', function()
     end
 end)
 
-RegisterNetEvent('qb-drugs:server:updateDealerItems', function(itemData, amount, dealer)
+RegisterNetEvent('qbx_drugs:server:updateDealerItems', function(itemData, amount, dealer)
     local src = source
     local player = exports.qbx_core:GetPlayer(src)
 
@@ -25,7 +25,7 @@ RegisterNetEvent('qb-drugs:server:updateDealerItems', function(itemData, amount,
 
     if sharedConfig.dealers[dealer].products[itemData.slot].amount - 1 >= 0 then
         sharedConfig.dealers[dealer].products[itemData.slot].amount -= amount
-        TriggerClientEvent('qb-drugs:client:setDealerItems', -1, itemData, amount, dealer)
+        TriggerClientEvent('qbx_drugs:client:setDealerItems', -1, itemData, amount, dealer)
     else
         exports.ox_inventory:RemoveItem(src, itemData.name, amount)
         player.Functions.AddMoney('cash', amount * sharedConfig.dealers[dealer].products[itemData.slot].price)
@@ -33,7 +33,7 @@ RegisterNetEvent('qb-drugs:server:updateDealerItems', function(itemData, amount,
     end
 end)
 
-RegisterNetEvent('qb-drugs:server:giveDeliveryItems', function(deliveryData)
+RegisterNetEvent('qbx_drugs:server:giveDeliveryItems', function(deliveryData)
     local src = source
     local player = exports.qbx_core:GetPlayer(src)
 
@@ -46,7 +46,7 @@ RegisterNetEvent('qb-drugs:server:giveDeliveryItems', function(deliveryData)
     exports.ox_inventory:AddItem(src, item, deliveryData.amount)
 end)
 
-RegisterNetEvent('qb-drugs:server:successDelivery', function(deliveryData, inTime)
+RegisterNetEvent('qbx_drugs:server:successDelivery', function(deliveryData, inTime)
     local src = source
     local player = exports.qbx_core:GetPlayer(src)
 
@@ -80,7 +80,7 @@ RegisterNetEvent('qb-drugs:server:successDelivery', function(deliveryData, inTim
             end
             exports.qbx_core:Notify(src, locale('success.order_delivered'), 'success')
             SetTimeout(math.random(5000, 10000), function()
-                TriggerClientEvent('qb-drugs:client:sendDeliveryMail', src, 'perfect', deliveryData)
+                TriggerClientEvent('qbx_drugs:client:sendDeliveryMail', src, 'perfect', deliveryData)
                 player.Functions.SetMetaData('dealerrep', (curRep + config.deliveryRepGain))
             end)
         else
@@ -92,7 +92,7 @@ RegisterNetEvent('qb-drugs:server:successDelivery', function(deliveryData, inTim
                 player.Functions.AddMoney('cash', math.floor(modifiedPayout / config.wrongAmountFee))
             end
             SetTimeout(math.random(5000, 10000), function()
-                TriggerClientEvent('qb-drugs:client:sendDeliveryMail', src, 'bad', deliveryData)
+                TriggerClientEvent('qbx_drugs:client:sendDeliveryMail', src, 'bad', deliveryData)
                 if curRep - 1 > 0 then
                     player.Functions.SetMetaData('dealerrep', (curRep - config.deliveryRepLoss))
                 else
@@ -106,7 +106,7 @@ RegisterNetEvent('qb-drugs:server:successDelivery', function(deliveryData, inTim
             exports.ox_inventory:RemoveItem(src, item, itemAmount)
             player.Functions.AddMoney('cash', math.floor(payout / config.overdueDeliveryFee), 'delivery-drugs-too-late')
             SetTimeout(math.random(5000, 10000), function()
-                TriggerClientEvent('qb-drugs:client:sendDeliveryMail', src, 'late', deliveryData)
+                TriggerClientEvent('qbx_drugs:client:sendDeliveryMail', src, 'late', deliveryData)
                 if curRep - 1 > 0 then
                     player.Functions.SetMetaData('dealerrep', (curRep - config.deliveryRepLoss))
                 else
@@ -121,7 +121,7 @@ RegisterNetEvent('qb-drugs:server:successDelivery', function(deliveryData, inTim
                 exports.ox_inventory:RemoveItem(src, item, itemAmount)
                 player.Functions.AddMoney('cash', math.floor(modifiedPayout / config.overdueDeliveryFee), 'delivery-drugs-too-late')
                 SetTimeout(math.random(5000, 10000), function()
-                    TriggerClientEvent('qb-drugs:client:sendDeliveryMail', src, 'late', deliveryData)
+                    TriggerClientEvent('qbx_drugs:client:sendDeliveryMail', src, 'late', deliveryData)
                     if curRep - 1 > 0 then
                         player.Functions.SetMetaData('dealerrep', (curRep - config.deliveryRepLoss))
                     else
@@ -176,7 +176,7 @@ lib.addCommand('newdealer', {
             time = { min = minTime, max = maxTime },
             products = config.products
         }
-        TriggerClientEvent('qb-drugs:client:RefreshDealers', -1, sharedConfig.dealers)
+        TriggerClientEvent('qbx_drugs:client:RefreshDealers', -1, sharedConfig.dealers)
     end)
 end)
 
@@ -197,7 +197,7 @@ lib.addCommand('deletedealer', {
     if result then
         MySQL.query('DELETE FROM dealers WHERE name = ?', {dealerName})
         sharedConfig.dealers[dealerName] = nil
-        TriggerClientEvent('qb-drugs:client:RefreshDealers', -1, sharedConfig.dealers)
+        TriggerClientEvent('qbx_drugs:client:RefreshDealers', -1, sharedConfig.dealers)
         exports.qbx_core:Notify(source, locale('success.dealer_deleted', dealerName), 'success')
     else
         exports.qbx_core:Notify(source, locale('error.dealer_not_exists_command', dealerName), 'error')
@@ -263,5 +263,5 @@ CreateThread(function()
             }
         end
     end
-    TriggerClientEvent('qb-drugs:client:RefreshDealers', -1, sharedConfig.dealers)
+    TriggerClientEvent('qbx_drugs:client:RefreshDealers', -1, sharedConfig.dealers)
 end)

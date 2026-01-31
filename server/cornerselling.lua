@@ -20,7 +20,7 @@ local function getAvailableDrugs(source)
     return table.type(availableDrugs) ~= 'empty' and availableDrugs or nil
 end
 
-lib.callback.register('qb-drugs:server:getDrugOffer', function(source)
+lib.callback.register('qbx_drugs:server:getDrugOffer', function(source)
     local player = exports.qbx_core:GetPlayer(source)
     if not player then return nil end
     local availableDrugs = getAvailableDrugs(player.PlayerData.source)
@@ -35,7 +35,7 @@ lib.callback.register('qb-drugs:server:getDrugOffer', function(source)
     return { chosen = chosenDrug, idx = randomDrug, amount = offeredAmount, total = totalPrice }
 end)
 
-RegisterNetEvent('qb-drugs:server:giveStealItems', function(drugType, amount)
+RegisterNetEvent('qbx_drugs:server:giveStealItems', function(drugType, amount)
     local availableDrugs = getAvailableDrugs(source)
     local player = exports.qbx_core:GetPlayer(source)
 
@@ -44,7 +44,7 @@ RegisterNetEvent('qb-drugs:server:giveStealItems', function(drugType, amount)
     exports.ox_inventory:AddItem(player.PlayerData.source, availableDrugs[drugType].item, amount)
 end)
 
-RegisterNetEvent('qb-drugs:server:sellCornerDrugs', function(drugType, amount, price)
+RegisterNetEvent('qbx_drugs:server:sellCornerDrugs', function(drugType, amount, price)
     local player = exports.qbx_core:GetPlayer(source)
     local availableDrugs = getAvailableDrugs(player.PlayerData.source)
 
@@ -61,11 +61,11 @@ RegisterNetEvent('qb-drugs:server:sellCornerDrugs', function(drugType, amount, p
             TriggerEvent('police:server:policeAlert', locale('info.possible_drug_dealing'), nil, player.PlayerData.source)
         end
     else
-        TriggerClientEvent('qb-drugs:client:cornerselling', player.PlayerData.source)
+        TriggerClientEvent('qbx_drugs:client:cornerselling', player.PlayerData.source)
     end
 end)
 
-RegisterNetEvent('qb-drugs:server:robCornerDrugs', function(drugType, amount)
+RegisterNetEvent('qbx_drugs:server:robCornerDrugs', function(drugType, amount)
     local player = exports.qbx_core:GetPlayer(source)
     local availableDrugs = getAvailableDrugs(player.PlayerData.source)
 

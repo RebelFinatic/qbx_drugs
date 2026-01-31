@@ -12,7 +12,7 @@ local drugDeliveryZone
 ---@diagnostic disable-next-line: param-type-mismatch
 AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
     if value then
-        sharedConfig.dealers = lib.callback.await('qb-drugs:server:RequestConfig', false)
+        sharedConfig.dealers = lib.callback.await('qbx_drugs:server:RequestConfig', false)
         InitZones()
     else
         if not config.useTarget and dealerCombo then dealerCombo:destroy() end
@@ -128,7 +128,7 @@ local function requestDelivery()
         }
 
         exports.qbx_core:Notify(locale('info.sending_delivery_email'), 'success')
-        TriggerServerEvent('qb-drugs:server:giveDeliveryItems', waitingDelivery)
+        TriggerServerEvent('qbx_drugs:server:giveDeliveryItems', waitingDelivery)
         SetTimeout(2000, function()
             TriggerServerEvent('qb-phone:server:sendNewMail', {
                 sender = sharedConfig.dealers[currentDealer].name,
@@ -136,7 +136,7 @@ local function requestDelivery()
                 message = locale('info.delivery_info_email', amount, exports.ox_inventory:Items()[waitingDelivery.itemData.item].label),
                 button = {
                     enabled = true,
-                    buttonEvent = 'qb-drugs:client:setLocation',
+                    buttonEvent = 'qbx_drugs:client:setLocation',
                     buttonData = waitingDelivery
                 }
             })
@@ -160,7 +160,7 @@ local function deliverStuff()
     if deliveryTimeout > 0 then
         Wait(500)
         TriggerEvent('animations:client:EmoteCommandStart', {'bumbin'})
-        TriggerServerEvent('qb-drugs:server:randomPoliceAlert')
+        TriggerServerEvent('qbx_drugs:server:randomPoliceAlert')
         if lib.progressCircle({
             label = locale('info.delivering_products'),
             duration = 3500,
@@ -169,7 +169,7 @@ local function deliverStuff()
             canCancel = true,
             disable = { car = true, move = true, combat = true }
         }) then
-            TriggerServerEvent('qb-drugs:server:successDelivery', activeDelivery, true)
+            TriggerServerEvent('qbx_drugs:server:successDelivery', activeDelivery, true)
             activeDelivery = nil
             if config.useTarget then
                 exports.ox_target:removeZone('drugDeliveryZone')
@@ -180,7 +180,7 @@ local function deliverStuff()
             ClearPedTasks(cache.ped)
         end
     else
-        TriggerServerEvent('qb-drugs:server:successDelivery', activeDelivery, false)
+        TriggerServerEvent('qbx_drugs:server:successDelivery', activeDelivery, false)
     end
     deliveryTimeout = 0
 end
@@ -328,22 +328,22 @@ end
 
 -- Events
 
-RegisterNetEvent('qb-drugs:client:RefreshDealers', function(DealerData)
+RegisterNetEvent('qbx_drugs:client:RefreshDealers', function(DealerData)
     if not config.useTarget and dealerCombo then dealerCombo:destroy() end
     sharedConfig.dealers = DealerData
     Wait(1000)
     InitZones()
 end)
 
-RegisterNetEvent('qb-drugs:client:updateDealerItems', function(itemData, amount)
-    TriggerServerEvent('qb-drugs:server:updateDealerItems', itemData, amount, currentDealer)
+RegisterNetEvent('qbx_drugs:client:updateDealerItems', function(itemData, amount)
+    TriggerServerEvent('qbx_drugs:server:updateDealerItems', itemData, amount, currentDealer)
 end)
 
-RegisterNetEvent('qb-drugs:client:setDealerItems', function(itemData, amount, dealer)
+RegisterNetEvent('qbx_drugs:client:setDealerItems', function(itemData, amount, dealer)
     sharedConfig.dealers[dealer].products[itemData.slot].amount = sharedConfig.dealers[dealer].products[itemData.slot].amount - amount
 end)
 
-RegisterNetEvent('qb-drugs:client:setLocation', function(locationData)
+RegisterNetEvent('qbx_drugs:client:setLocation', function(locationData)
     if activeDelivery then
         setMapBlip(activeDelivery.coords.x, activeDelivery.coords.y)
         exports.qbx_core:Notify(locale('error.pending_delivery'), 'error')
@@ -405,7 +405,7 @@ RegisterNetEvent('qb-drugs:client:setLocation', function(locationData)
     end
 end)
 
-RegisterNetEvent('qb-drugs:client:sendDeliveryMail', function(type, deliveryData)
+RegisterNetEvent('qbx_drugs:client:sendDeliveryMail', function(type, deliveryData)
     if type == 'perfect' then
         TriggerServerEvent('qb-phone:server:sendNewMail', {
             sender = sharedConfig.dealers[deliveryData.dealer].name,
