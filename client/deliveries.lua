@@ -222,20 +222,19 @@ end
 function InitZones()
     if config.useTarget then
         for k, v in pairs(sharedConfig.dealers) do
-            ---@todo Move to ox_target
 
-            exports['qb-target']:AddBoxZone('dealer_'..k, vector3(v.coords.x, v.coords.y, v.coords.z), 1.5, 1.5, {
+            exports.ox_target:addBoxZone({
                 name = 'dealer_'..k,
-                heading = v.heading,
-                minZ = v.coords.z - 1,
-                maxZ = v.coords.z + 1,
-                debugPoly = false,
-            }, {
+                coords = vec3(v.coords.x, v.coords.y, v.coords.z),
+                size = vec3(1.5, 1.5, 2.0),
+                rotation = v.heading or 0.0,
+                debug = false,
                 options = {
                     {
+                        name = 'request_delivery',
                         icon = 'fas fa-user-secret',
                         label = locale('info.target_request'),
-                        action = function()
+                        onSelect = function()
                             requestDelivery()
                         end,
                         canInteract = function()
@@ -244,28 +243,18 @@ function InitZones()
                             local min = sharedConfig.dealers[currentDealer].time.min
                             local max = sharedConfig.dealers[currentDealer].time.max
                             if max < min then
-                                if hours <= max then
-                                    if not waitingDelivery then
-                                        return true
-                                    end
-                                elseif hours >= min then
-                                    if not waitingDelivery then
-                                        return true
-                                    end
-                                end
+                                return (hours <= max or hours >= min) and not waitingDelivery
                             else
-                                if hours >= min and hours <= max then
-                                    if not waitingDelivery then
-                                        return true
-                                    end
-                                end
+                                return (hours >= min and hours <= max) and not waitingDelivery
                             end
-                        end
+                        end,
+                        distance = 1.5
                     },
                     {
+                        name = 'open_shop',
                         icon = 'fas fa-user-secret',
                         label = locale('info.target_openshop'),
-                        action = function()
+                        onSelect = function()
                             openDealerShop()
                         end,
                         canInteract = function()
@@ -274,21 +263,16 @@ function InitZones()
                             local min = sharedConfig.dealers[currentDealer].time.min
                             local max = sharedConfig.dealers[currentDealer].time.max
                             if max < min then
-                                if hours <= max then
-                                    return true
-                                elseif hours >= min then
-                                    return true
-                                end
+                                return hours <= max or hours >= min
                             else
-                                if hours >= min and hours <= max then
-                                    return true
-                                end
+                                return hours >= min and hours <= max
                             end
-                        end
+                        end,
+                        distance = 1.5
                     }
-                },
-                distance = 1.5
+                }
             })
+
         end
     else
         ---@TODO Move to ox_lib Zoning
