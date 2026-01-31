@@ -108,7 +108,7 @@ local function sellToPed(ped)
 
     local successChance = math.random(1, 100)
     local getRobbed = math.random(1, 100)
-    if successChance <= config.successChance then hasTarget = false return end
+    if successChance > config.successChance then hasTarget = false return end
 
     currentOfferDrug = lib.callback.await('qbx_drugs:server:getDrugOffer', false)
 
