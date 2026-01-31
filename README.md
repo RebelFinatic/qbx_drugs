@@ -1,2 +1,2 @@
 # qbx_drugs
-Drug script For QBox
+Rewriting Qbox Drugs to work properly

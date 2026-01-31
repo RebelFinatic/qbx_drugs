@@ -57,9 +57,9 @@ RegisterNetEvent('qbx_drugs:server:successDelivery', function(deliveryData, inTi
     local payout = deliveryData.itemData.payout * itemAmount
     local copsOnline = exports.qbx_core:GetDutyCountType('leo')
     local curRep = player.PlayerData.metadata.dealerrep
-    local invItem = exports.ox_inventory:Search(src, 'count', item)
+    local invItemCount = exports.ox_inventory:Search(src, 'count', item)
     if inTime then
-        if invItem and invItem.amount >= itemAmount then -- on time correct amount
+        if invItemCount and invItemCount >= itemAmount then -- on time correct amount
             exports.ox_inventory:RemoveItem(src, item, itemAmount)
             if copsOnline > 0 then
                 local copModifier = copsOnline * config.policeDeliveryModifier
@@ -85,8 +85,8 @@ RegisterNetEvent('qbx_drugs:server:successDelivery', function(deliveryData, inTi
             end)
         else
             exports.qbx_core:Notify(src, locale('error.order_not_right'), 'error')-- on time incorrect amount
-            if invItem then
-                local newItemAmount = invItem.amount
+            if invItemCount then
+                local newItemAmount = invItemCount
                 local modifiedPayout = deliveryData.itemData.payout * newItemAmount
                 exports.ox_inventory:RemoveItem(src, item, newItemAmount)
                 player.Functions.AddMoney('cash', math.floor(modifiedPayout / config.wrongAmountFee))
@@ -101,7 +101,7 @@ RegisterNetEvent('qbx_drugs:server:successDelivery', function(deliveryData, inTi
             end)
         end
     else
-        if invItem and invItem.amount >= itemAmount then -- late correct amount
+        if invItemCount and invItemCount >= itemAmount then -- late correct amount
             exports.qbx_core:Notify(src, locale('error.too_late'), 'error')
             exports.ox_inventory:RemoveItem(src, item, itemAmount)
             player.Functions.AddMoney('cash', math.floor(payout / config.overdueDeliveryFee), 'delivery-drugs-too-late')
@@ -114,8 +114,8 @@ RegisterNetEvent('qbx_drugs:server:successDelivery', function(deliveryData, inTi
                 end
             end)
         else
-            if invItem then -- late incorrect amount
-                local newItemAmount = invItem.amount
+            if invItemCount then -- late incorrect amount
+                local newItemAmount = invItemCount
                 local modifiedPayout = deliveryData.itemData.payout * newItemAmount
                 exports.qbx_core:Notify(src, locale('error.too_late'), 'error')
                 exports.ox_inventory:RemoveItem(src, item, itemAmount)

@@ -15,7 +15,12 @@ AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
         sharedConfig.dealers = lib.callback.await('qbx_drugs:server:RequestConfig', false)
         InitZones()
     else
-        if not config.useTarget and dealerCombo then dealerCombo:destroy() end
+        if not config.useTarget and dealerCombo then
+            for _, zone in pairs(dealerCombo) do
+                zone:remove()
+            end
+            dealerCombo = nil
+        end
     end
 end)
 
@@ -193,11 +198,12 @@ end
 -- PolyZone specific functions
 
 function AwaitingInput()
+    if waitingKeyPress then return end -- Prevent multiple threads
     CreateThread(function()
         waitingKeyPress = true
         while waitingKeyPress do
             if not dealerIsHome then
-                if IsControlPressed(0, 38) then
+                if IsControlJustPressed(0, 38) then
                     knockDealerDoor()
                 end
             elseif dealerIsHome then
@@ -275,37 +281,34 @@ function InitZones()
 
         end
     else
-        ---@TODO Move to ox_lib Zoning
+        -- ox_lib zones for non-target mode
+        local dealerZones = {}
 
-        --[[ local dealerPoly = {}
         for k, v in pairs(sharedConfig.dealers) do
-            dealerPoly[#dealerPoly+1] = BoxZone:Create(vector3(v.coords.x, v.coords.y, v.coords.z), 1.5, 1.5, {
-                heading = -20,
-                name='dealer_'..k,
-                debugPoly = false,
-                minZ = v.coords.z - 1,
-                maxZ = v.coords.z + 1,
+            local zone = lib.zones.box({
+                coords = vec3(v.coords.x, v.coords.y, v.coords.z),
+                size = vec3(1.5, 1.5, 2.0),
+                rotation = v.heading or 0.0,
+                debug = false,
+                onEnter = function()
+                    getClosestDealer()
+                    if not dealerIsHome then
+                        lib.showTextUI(locale('info.knock_button'), { position = 'left-center' })
+                        AwaitingInput()
+                    elseif dealerIsHome then
+                        lib.showTextUI(locale('info.other_dealers_button'), { position = 'left-center' })
+                        AwaitingInput()
+                    end
+                end,
+                onExit = function()
+                    waitingKeyPress = false
+                    lib.hideTextUI()
+                end
             })
+            dealerZones[#dealerZones + 1] = zone
         end
 
-        if table.type(dealerPoly) == 'empty' then return end
-
-        dealerCombo = ComboZone:Create(dealerPoly, {name = 'dealerPoly'})
-        dealerCombo:onPlayerInOut(function(isPointInside)
-            if isPointInside then
-                if not dealerIsHome then
-                    lib.showTextUI(locale('info.knock_button'), { position = 'left-center' })
-                    AwaitingInput()
-                elseif dealerIsHome then
-                    lib.showTextUI(locale('info.other_dealers_button'), { position = 'left-center' })
-                    AwaitingInput()
-                end
-            else
-                waitingKeyPress = false
-                lib.hideTextUI()
-            end
-        end) ]]--
-
+        dealerCombo = dealerZones
         return
     end
 end
@@ -313,7 +316,12 @@ end
 -- Events
 
 RegisterNetEvent('qbx_drugs:client:RefreshDealers', function(DealerData)
-    if not config.useTarget and dealerCombo then dealerCombo:destroy() end
+    if not config.useTarget and dealerCombo then
+        for _, zone in pairs(dealerCombo) do
+            zone:remove()
+        end
+        dealerCombo = nil
+    end
     sharedConfig.dealers = DealerData
     Wait(1000)
     InitZones()
@@ -361,10 +369,10 @@ RegisterNetEvent('qbx_drugs:client:setLocation', function(locationData)
     else
         local inDeliveryZone = false
         drugDeliveryZone = lib.zones.box({
-            coords = vec3(activeDelivery.coords.xyz),
+            coords = vec3(activeDelivery.coords.x, activeDelivery.coords.y, activeDelivery.coords.z),
             size = vec3(1.5, 1.5, 2.0),
             rotation = 0.0,
-            debug = false,
+            debug = true,
             onEnter = function()
                 inDeliveryZone = true
                 lib.showTextUI(locale('info.deliver_items_button', activeDelivery.amount, exports.ox_inventory:Items()[activeDelivery.itemData.item].label), {
