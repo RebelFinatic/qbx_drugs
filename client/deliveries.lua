@@ -1,13 +1,5 @@
 local config = require 'config.client'
 local sharedConfig = require 'config.shared'
-local currentDealer = nil
-local dealerIsHome = false
-local waitingDelivery = nil
-local activeDelivery = nil
-local deliveryTimeout = 0
-local waitingKeyPress = false
-local dealerCombo = false
-local drugDeliveryZone
 
 ---@diagnostic disable-next-line: param-type-mismatch
 AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
@@ -15,11 +7,23 @@ AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
         sharedConfig.dealers = lib.callback.await('qbx_drugs:server:RequestConfig', false)
         InitZones()
     else
-        if not config.useTarget and dealerCombo then
-            for _, zone in pairs(dealerCombo) do
-                zone:remove()
+        if not config.useTarget then
+            local dealerZones = LocalPlayer.state.dealerZones
+            if dealerZones then
+                for _, zone in pairs(dealerZones) do
+                    zone:remove()
+                end
+                LocalPlayer.state.dealerZones = nil
             end
-            dealerCombo = nil
+        end
+        -- Clean up delivery zone
+        if LocalPlayer.state.drugDeliveryZone then
+            if LocalPlayer.state.drugDeliveryZone.remove then
+                LocalPlayer.state.drugDeliveryZone:remove()
+            elseif LocalPlayer.state.drugDeliveryZone.destroy then
+                LocalPlayer.state.drugDeliveryZone:destroy()
+            end
+            LocalPlayer.state.drugDeliveryZone = nil
         end
     end
 end)
@@ -29,7 +33,7 @@ local function getClosestDealer()
     for k, v in pairs(sharedConfig.dealers) do
         local dealerCoords = vector3(v.coords.x, v.coords.y, v.coords.z)
         if #(pCoords - dealerCoords) < 2 then
-            currentDealer = k
+            LocalPlayer.state.currentDealer = k
             break
         end
     end
@@ -39,15 +43,15 @@ end
 local function openDealerShop()
     getClosestDealer()
     local repItems = {}
-    repItems.label = sharedConfig.dealers[currentDealer].name
+    repItems.label = sharedConfig.dealers[LocalPlayer.state.currentDealer].name
     repItems.items = {}
     repItems.slots = 30
-    for k, _ in pairs(sharedConfig.dealers[currentDealer].products) do
-        if QBX.PlayerData.metadata.dealerrep >= sharedConfig.dealers[currentDealer].products[k].minrep then
-            repItems.items[k] = sharedConfig.dealers[currentDealer].products[k]
+    for k, _ in pairs(sharedConfig.dealers[LocalPlayer.state.currentDealer].products) do
+        if QBX.PlayerData.metadata.dealerrep >= sharedConfig.dealers[LocalPlayer.state.currentDealer].products[k].minrep then
+            repItems.items[k] = sharedConfig.dealers[LocalPlayer.state.currentDealer].products[k]
         end
     end
-    TriggerServerEvent('inventory:server:OpenInventory', 'shop', 'Dealer_'..sharedConfig.dealers[currentDealer].name, repItems)
+    TriggerServerEvent('inventory:server:OpenInventory', 'shop', 'Dealer_'..sharedConfig.dealers[LocalPlayer.state.currentDealer].name, repItems)
 end
 
 local function knockDoorAnim(home)
@@ -61,12 +65,12 @@ local function knockDoorAnim(home)
         Wait(3500)
         lib.playAnim(cache.ped, knockAnimLib, 'exit', 3.0, 3.0, -1, 1, 0, false, false, false)
         Wait(1000)
-        dealerIsHome = true
+        LocalPlayer.state.dealerIsHome = true
         TriggerEvent('chat:addMessage', {
             color = { 255, 0, 0 },
             multiline = true,
             args = {
-                locale('info.dealer_name', sharedConfig.dealers[currentDealer].name),
+                locale('info.dealer_name', sharedConfig.dealers[LocalPlayer.state.currentDealer].name),
                 locale('info.fred_knock_message', QBX.PlayerData.charinfo.firstname)
             }
         })
@@ -86,8 +90,8 @@ end
 local function knockDealerDoor()
     getClosestDealer()
     local hours = GetClockHours()
-    local min = sharedConfig.dealers[currentDealer].time.min
-    local max = sharedConfig.dealers[currentDealer].time.max
+    local min = sharedConfig.dealers[LocalPlayer.state.currentDealer].time.min
+    local max = sharedConfig.dealers[LocalPlayer.state.currentDealer].time.max
     if max < min then
         if hours <= max then
             knockDoorAnim(true)
@@ -117,26 +121,27 @@ local function randomDeliveryItemOnRep()
 end
 
 local function requestDelivery()
-    if not waitingDelivery then
+    if not LocalPlayer.state.waitingDelivery then
         getClosestDealer()
         local location = math.random(1, #config.deliveryLocations)
         local amount = math.random(1, 3)
         local item = randomDeliveryItemOnRep()
 
-        waitingDelivery = {
+        local waitingDelivery = {
             coords = config.deliveryLocations[location].coords,
             locationLabel = config.deliveryLocations[location].label,
             amount = amount,
-            dealer = currentDealer,
+            dealer = LocalPlayer.state.currentDealer,
             itemData = sharedConfig.deliveryItems[item],
             item = item
         }
+        LocalPlayer.state.waitingDelivery = waitingDelivery
 
         exports.qbx_core:Notify(locale('info.sending_delivery_email'), 'success')
         TriggerServerEvent('qbx_drugs:server:giveDeliveryItems', waitingDelivery)
         SetTimeout(2000, function()
             TriggerServerEvent('qb-phone:server:sendNewMail', {
-                sender = sharedConfig.dealers[currentDealer].name,
+                sender = sharedConfig.dealers[LocalPlayer.state.currentDealer].name,
                 subject = 'Delivery Location',
                 message = locale('info.delivery_info_email', amount, exports.ox_inventory:Items()[waitingDelivery.itemData.item].label),
                 button = {
@@ -153,15 +158,21 @@ end
 
 local function deliveryTimer()
     CreateThread(function()
-        while deliveryTimeout - 1 > 0 do
-            deliveryTimeout -= 1
+        local timeout = LocalPlayer.state.deliveryTimeout
+        while timeout - 1 > 0 do
+            timeout = timeout - 1
+            LocalPlayer.state.deliveryTimeout = timeout
             Wait(1000)
         end
-        deliveryTimeout = 0
+        LocalPlayer.state.deliveryTimeout = 0
     end)
 end
 
 local function deliverStuff()
+    local deliveryTimeout = LocalPlayer.state.deliveryTimeout
+    local activeDelivery = LocalPlayer.state.activeDelivery
+    local drugDeliveryZone = LocalPlayer.state.drugDeliveryZone
+
     if deliveryTimeout > 0 then
         Wait(500)
         TriggerEvent('animations:client:EmoteCommandStart', {'bumbin'})
@@ -175,11 +186,14 @@ local function deliverStuff()
             disable = { car = true, move = true, combat = true }
         }) then
             TriggerServerEvent('qbx_drugs:server:successDelivery', activeDelivery, true)
-            activeDelivery = nil
+            LocalPlayer.state.activeDelivery = nil
             if config.useTarget then
                 exports.ox_target:removeZone('drugDeliveryZone')
             else
-                drugDeliveryZone:destroy()
+                if drugDeliveryZone then
+                    drugDeliveryZone:destroy()
+                    LocalPlayer.state.drugDeliveryZone = nil
+                end
             end
         else
             ClearPedTasks(cache.ped)
@@ -187,7 +201,7 @@ local function deliverStuff()
     else
         TriggerServerEvent('qbx_drugs:server:successDelivery', activeDelivery, false)
     end
-    deliveryTimeout = 0
+    LocalPlayer.state.deliveryTimeout = 0
 end
 
 local function setMapBlip(x, y)
@@ -198,26 +212,26 @@ end
 -- PolyZone specific functions
 
 function AwaitingInput()
-    if waitingKeyPress then return end -- Prevent multiple threads
+    if LocalPlayer.state.waitingKeyPress then return end -- Prevent multiple threads
     CreateThread(function()
-        waitingKeyPress = true
-        while waitingKeyPress do
-            if not dealerIsHome then
+        LocalPlayer.state.waitingKeyPress = true
+        while LocalPlayer.state.waitingKeyPress do
+            if not LocalPlayer.state.dealerIsHome then
                 if IsControlJustPressed(0, 38) then
                     knockDealerDoor()
                 end
-            elseif dealerIsHome then
+            elseif LocalPlayer.state.dealerIsHome then
                 if IsControlJustPressed(0, 38) then
                     openDealerShop()
-                    waitingKeyPress = false
+                    LocalPlayer.state.waitingKeyPress = false
                 end
                 if IsControlJustPressed(0, 47) then
-                    if waitingDelivery then
-                        waitingKeyPress = false
+                    if LocalPlayer.state.waitingDelivery then
+                        LocalPlayer.state.waitingKeyPress = false
                     end
                     requestDelivery()
-                    dealerIsHome = false
-                    waitingKeyPress = false
+                    LocalPlayer.state.dealerIsHome = false
+                    LocalPlayer.state.waitingKeyPress = false
                 end
             end
             Wait(0)
@@ -246,12 +260,12 @@ function InitZones()
                         canInteract = function()
                             getClosestDealer()
                             local hours = GetClockHours()
-                            local min = sharedConfig.dealers[currentDealer].time.min
-                            local max = sharedConfig.dealers[currentDealer].time.max
+                            local min = sharedConfig.dealers[LocalPlayer.state.currentDealer].time.min
+                            local max = sharedConfig.dealers[LocalPlayer.state.currentDealer].time.max
                             if max < min then
-                                return (hours <= max or hours >= min) and not waitingDelivery
+                                return (hours <= max or hours >= min) and not LocalPlayer.state.waitingDelivery
                             else
-                                return (hours >= min and hours <= max) and not waitingDelivery
+                                return (hours >= min and hours <= max) and not LocalPlayer.state.waitingDelivery
                             end
                         end,
                         distance = 1.5
@@ -266,8 +280,8 @@ function InitZones()
                         canInteract = function()
                             getClosestDealer()
                             local hours = GetClockHours()
-                            local min = sharedConfig.dealers[currentDealer].time.min
-                            local max = sharedConfig.dealers[currentDealer].time.max
+                            local min = sharedConfig.dealers[LocalPlayer.state.currentDealer].time.min
+                            local max = sharedConfig.dealers[LocalPlayer.state.currentDealer].time.max
                             if max < min then
                                 return hours <= max or hours >= min
                             else
@@ -292,23 +306,23 @@ function InitZones()
                 debug = false,
                 onEnter = function()
                     getClosestDealer()
-                    if not dealerIsHome then
+                    if not LocalPlayer.state.dealerIsHome then
                         lib.showTextUI(locale('info.knock_button'), { position = 'left-center' })
                         AwaitingInput()
-                    elseif dealerIsHome then
+                    elseif LocalPlayer.state.dealerIsHome then
                         lib.showTextUI(locale('info.other_dealers_button'), { position = 'left-center' })
                         AwaitingInput()
                     end
                 end,
                 onExit = function()
-                    waitingKeyPress = false
+                    LocalPlayer.state.waitingKeyPress = false
                     lib.hideTextUI()
                 end
             })
             dealerZones[#dealerZones + 1] = zone
         end
 
-        dealerCombo = dealerZones
+        LocalPlayer.state.dealerZones = dealerZones
         return
     end
 end
@@ -316,11 +330,14 @@ end
 -- Events
 
 RegisterNetEvent('qbx_drugs:client:RefreshDealers', function(DealerData)
-    if not config.useTarget and dealerCombo then
-        for _, zone in pairs(dealerCombo) do
-            zone:remove()
+    if not config.useTarget then
+        local dealerZones = LocalPlayer.state.dealerZones
+        if dealerZones then
+            for _, zone in pairs(dealerZones) do
+                zone:remove()
+            end
+            LocalPlayer.state.dealerZones = nil
         end
-        dealerCombo = nil
     end
     sharedConfig.dealers = DealerData
     Wait(1000)
@@ -328,7 +345,7 @@ RegisterNetEvent('qbx_drugs:client:RefreshDealers', function(DealerData)
 end)
 
 RegisterNetEvent('qbx_drugs:client:updateDealerItems', function(itemData, amount)
-    TriggerServerEvent('qbx_drugs:server:updateDealerItems', itemData, amount, currentDealer)
+    TriggerServerEvent('qbx_drugs:server:updateDealerItems', itemData, amount, LocalPlayer.state.currentDealer)
 end)
 
 RegisterNetEvent('qbx_drugs:client:setDealerItems', function(itemData, amount, dealer)
@@ -336,19 +353,22 @@ RegisterNetEvent('qbx_drugs:client:setDealerItems', function(itemData, amount, d
 end)
 
 RegisterNetEvent('qbx_drugs:client:setLocation', function(locationData)
+    local activeDelivery = LocalPlayer.state.activeDelivery
+    local waitingDelivery = LocalPlayer.state.waitingDelivery
+
     if activeDelivery then
         setMapBlip(activeDelivery.coords.x, activeDelivery.coords.y)
         exports.qbx_core:Notify(locale('error.pending_delivery'), 'error')
         return
     end
-    activeDelivery = locationData
-    deliveryTimeout = 300
+    LocalPlayer.state.activeDelivery = locationData
+    LocalPlayer.state.deliveryTimeout = 300
     deliveryTimer()
-    setMapBlip(activeDelivery.coords.x, activeDelivery.coords.y)
+    setMapBlip(locationData.coords.x, locationData.coords.y)
     if config.useTarget then
         exports.ox_target:addBoxZone({
             name = 'drugDeliveryZone',
-            coords = vec3(activeDelivery.coords.x, activeDelivery.coords.y, activeDelivery.coords.z),
+            coords = vec3(locationData.coords.x, locationData.coords.y, locationData.coords.z),
             size = vec3(1.5, 1.5, 2.0),
             rotation = 0.0,
             debug = true,
@@ -358,31 +378,32 @@ RegisterNetEvent('qbx_drugs:client:setLocation', function(locationData)
                     label = locale('info.target_deliver'),
                     onSelect = function()
                         deliverStuff()
-                        waitingDelivery = nil
+                        LocalPlayer.state.waitingDelivery = nil
                     end,
                     canInteract = function(_, distance)
-                        return waitingDelivery and distance <= 2.5
+                        return LocalPlayer.state.waitingDelivery and distance <= 2.5
                     end
                 }
             }
         })
     else
         local inDeliveryZone = false
-        drugDeliveryZone = lib.zones.box({
-            coords = vec3(activeDelivery.coords.x, activeDelivery.coords.y, activeDelivery.coords.z),
+        local drugDeliveryZone = lib.zones.box({
+            coords = vec3(locationData.coords.x, locationData.coords.y, locationData.coords.z),
             size = vec3(1.5, 1.5, 2.0),
             rotation = 0.0,
             debug = true,
             onEnter = function()
                 inDeliveryZone = true
-                lib.showTextUI(locale('info.deliver_items_button', activeDelivery.amount, exports.ox_inventory:Items()[activeDelivery.itemData.item].label), {
+                LocalPlayer.state.drugDeliveryZone = drugDeliveryZone
+                lib.showTextUI(locale('info.deliver_items_button', locationData.amount, exports.ox_inventory:Items()[locationData.itemData.item].label), {
                     position = 'left-center'
                 })
                 CreateThread(function()
                     while inDeliveryZone do
                         if IsControlJustPressed(0, 38) then
                             deliverStuff()
-                            waitingDelivery = nil
+                            LocalPlayer.state.waitingDelivery = nil
                             break
                         end
                         Wait(0)

@@ -1,5 +1,11 @@
 local config = require 'config.server'
 
+-- Callback to get the current count of on-duty police officers
+lib.callback.register('qbx_drugs:server:getPoliceCount', function()
+    local policeCount = exports.qbx_core:GetDutyCountJob('police')
+    return policeCount or 0
+end)
+
 local function getAvailableDrugs(source)
     local availableDrugs = {}
     local player = exports.qbx_core:GetPlayer(source)

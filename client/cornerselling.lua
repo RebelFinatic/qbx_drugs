@@ -1,24 +1,29 @@
 local config = require 'config.client'
-local cornerselling = false
-local hasTarget = false
-local lastPed = {}
-local stealingPed = nil
-local stealData = {}
-local currentOfferDrug = nil
-local CurrentCops = 0
-local textDrawn = false
-local zoneMade = false
+
+-- Initialize state values
+if LocalPlayer.state.lastPed == nil then
+    LocalPlayer.state.lastPed = {}
+end
+if LocalPlayer.state.stealData == nil then
+    LocalPlayer.state.stealData = {}
+end
+if LocalPlayer.state.zoneMade == nil then
+    LocalPlayer.state.zoneMade = false
+end
+if LocalPlayer.state.textDrawn == nil then
+    LocalPlayer.state.textDrawn = false
+end
 
 local function tooFarAway()
     exports.qbx_core:Notify(locale('error.too_far_away'), 'error')
-    cornerselling = false
-    hasTarget = false
-    currentOfferDrug = nil
+    LocalPlayer.state.isSelling = false
+    LocalPlayer.state.hasTarget = false
+    LocalPlayer.state.currentOfferDrug = nil
 end
 
 local function robberyPed()
     if config.useTarget then
-        local targetStealingPed = NetworkGetNetworkIdFromEntity(stealingPed)
+        local targetStealingPed = NetworkGetNetworkIdFromEntity(LocalPlayer.state.stealingPed)
         local options = {
             {
                 name = 'stealingped',
@@ -28,14 +33,14 @@ local function robberyPed()
                     lib.playAnim(cache.ped, 'pickup_object', 'pickup_low', 8.0, -8.0, -1, 1, 0, false, false, false)
                     Wait(2000)
                     ClearPedTasks(cache.ped)
-                    TriggerServerEvent('qbx_drugs:server:giveStealItems', stealData.drugType, stealData.amount)
-                    TriggerEvent('inventory:client:ItemBox', exports.ox_inventory:Items()[stealData.item], 'add')
-                    stealingPed = nil
-                    stealData = {}
+                    TriggerServerEvent('qbx_drugs:server:giveStealItems', LocalPlayer.state.stealData.drugType, LocalPlayer.state.stealData.amount)
+                    TriggerEvent('inventory:client:ItemBox', exports.ox_inventory:Items()[LocalPlayer.state.stealData.item], 'add')
+                    LocalPlayer.state.stealingPed = nil
+                    LocalPlayer.state.stealData = {}
                     exports.ox_target:removeEntity(targetStealingPed, 'stealingped')
                 end,
                 canInteract = function()
-                    if IsEntityDead(stealingPed) then
+                    if IsEntityDead(LocalPlayer.state.stealingPed) then
                         return true
                     end
                 end
@@ -43,13 +48,13 @@ local function robberyPed()
         }
         exports.ox_target:addEntity(targetStealingPed, options)
         CreateThread(function()
-            while stealingPed do
+            while LocalPlayer.state.stealingPed do
                 local pos = GetEntityCoords(cache.ped)
-                local pedpos = GetEntityCoords(stealingPed)
+                local pedpos = GetEntityCoords(LocalPlayer.state.stealingPed)
                 local dist = #(pos - pedpos)
                 if dist > 100 then
-                    stealingPed = nil
-                    stealData = {}
+                    LocalPlayer.state.stealingPed = nil
+                    LocalPlayer.state.stealData = {}
                     exports.ox_target:removeEntity(targetStealingPed, 'stealingped')
                     break
                 end
@@ -57,11 +62,12 @@ local function robberyPed()
             end
         end)
     else
+        local textDrawn = false
         CreateThread(function()
-            while stealingPed do
-                if IsEntityDead(stealingPed) then
+            while LocalPlayer.state.stealingPed do
+                if IsEntityDead(LocalPlayer.state.stealingPed) then
                     local pos = GetEntityCoords(cache.ped)
-                    local pedpos = GetEntityCoords(stealingPed)
+                    local pedpos = GetEntityCoords(LocalPlayer.state.stealingPed)
                     if not config.useTarget and #(pos - pedpos) < 1.5 then
                         if not textDrawn then
                             textDrawn = true
@@ -73,18 +79,18 @@ local function robberyPed()
                             lib.playAnim(cache.ped, 'pickup_object', 'pickup_low', 8.0, -8.0, -1, 1, 0, false, false, false)
                             Wait(2000)
                             ClearPedTasks(cache.ped)
-                            TriggerServerEvent('qbx_drugs:server:giveStealItems', stealData.drugType, stealData.amount)
-                            TriggerEvent('inventory:client:ItemBox', exports.ox_inventory:Items()[stealData.item], 'add')
-                            stealingPed = nil
-                            stealData = {}
+                            TriggerServerEvent('qbx_drugs:server:giveStealItems', LocalPlayer.state.stealData.drugType, LocalPlayer.state.stealData.amount)
+                            TriggerEvent('inventory:client:ItemBox', exports.ox_inventory:Items()[LocalPlayer.state.stealData.item], 'add')
+                            LocalPlayer.state.stealingPed = nil
+                            LocalPlayer.state.stealData = {}
                         end
                     end
                 else
                     local pos = GetEntityCoords(cache.ped)
-                    local pedpos = GetEntityCoords(stealingPed)
+                    local pedpos = GetEntityCoords(LocalPlayer.state.stealingPed)
                     if #(pos - pedpos) > 100 then
-                        stealingPed = nil
-                        stealData = {}
+                        LocalPlayer.state.stealingPed = nil
+                        LocalPlayer.state.stealData = {}
                         break
                     end
                 end
@@ -95,22 +101,24 @@ local function robberyPed()
 end
 
 local function sellToPed(ped)
-    hasTarget = true
+    LocalPlayer.state.hasTarget = true
     local targetPedSale = NetworkGetNetworkIdFromEntity(ped)
     local optionNamesTargetPed = {'selldrugs', 'declineoffer'}
+    local lastPed = LocalPlayer.state.lastPed
 
     for i = 1, #lastPed, 1 do
         if lastPed[i] == ped then
-            hasTarget = false
+            LocalPlayer.state.hasTarget = false
             return
         end
     end
 
     local successChance = math.random(1, 100)
     local getRobbed = math.random(1, 100)
-    if successChance > config.successChance then hasTarget = false return end
+    if successChance > config.successChance then LocalPlayer.state.hasTarget = false return end
 
-    currentOfferDrug = lib.callback.await('qbx_drugs:server:getDrugOffer', false)
+    local currentOfferDrug = lib.callback.await('qbx_drugs:server:getDrugOffer', false)
+    LocalPlayer.state.currentOfferDrug = currentOfferDrug
 
     if currentOfferDrug == nil then
         exports.qbx_core:Notify(locale('error.no_drugs_left'), 'error')
@@ -137,7 +145,7 @@ local function sellToPed(ped)
     TaskTurnPedToFaceEntity(ped, cache.ped, 5500)
     TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_STAND_IMPATIENT_UPRIGHT', 0, false)
 
-    if hasTarget then
+    if LocalPlayer.state.hasTarget then
         while pedDist < 1.5 and not IsPedDeadOrDying(ped, false) do
             local coords2 = GetEntityCoords(cache.ped, true)
             local pedCoords2 = GetEntityCoords(ped)
@@ -145,24 +153,26 @@ local function sellToPed(ped)
             if getRobbed <= config.robberyChance then
                 TriggerServerEvent('qbx_drugs:server:robCornerDrugs', currentOfferDrug.idx, currentOfferDrug.amount)
                 exports.qbx_core:Notify(locale('info.has_been_robbed', currentOfferDrug.amount, currentOfferDrug.chosen.label))
-                stealingPed = ped
-                stealData = {
+                LocalPlayer.state.stealingPed = ped
+                LocalPlayer.state.stealData = {
                     item = currentOfferDrug.chosen.item,
                     drugType = currentOfferDrug.idx,
                     amount = currentOfferDrug.amount,
                 }
-                hasTarget = false
+                LocalPlayer.state.hasTarget = false
                 local moveTo = GetEntityCoords(cache.ped)
                 local moveToCoords = vec3(moveTo.x + math.random(100, 500), moveTo.y + math.random(100, 500), moveTo.z)
                 ClearPedTasksImmediately(ped)
                 TaskGoStraightToCoord(ped, moveToCoords.x, moveToCoords.y, moveToCoords.z, 15.0, -1, 0.0, 0.0)
+                local lastPed = LocalPlayer.state.lastPed
                 lastPed[#lastPed + 1] = ped
+                LocalPlayer.state.lastPed = lastPed
                 robberyPed()
                 break
             else
-                if pedDist2 < 1.5 and cornerselling then
-                    if config.useTarget and not zoneMade then
-                        zoneMade = true
+                if pedDist2 < 1.5 and LocalPlayer.state.isSelling then
+                    if config.useTarget and not LocalPlayer.state.zoneMade then
+                        LocalPlayer.state.zoneMade = true
                         local options = {
                             {
                                 name = 'selldrugs',
@@ -170,15 +180,17 @@ local function sellToPed(ped)
                                 label = locale('info.target_drug_offer', currentOfferDrug.amount, currentOfferDrug.chosen.label, currentOfferDrug.total),
                                 onSelect = function()
                                     TriggerServerEvent('qbx_drugs:server:sellCornerDrugs', currentOfferDrug.idx, currentOfferDrug.amount, currentOfferDrug.total)
-                                    currentOfferDrug = nil
-                                    hasTarget = false
+                                    LocalPlayer.state.currentOfferDrug = nil
+                                    LocalPlayer.state.hasTarget = false
                                     lib.playAnim(cache.ped, 'gestures@f@standing@casual', 'gesture_point', 3.0, 3.0, -1, 49, 0, false, false, false)
                                     Wait(650)
                                     ClearPedTasks(cache.ped)
                                     SetPedKeepTask(ped, false)
                                     SetEntityAsNoLongerNeeded(ped)
                                     ClearPedTasksImmediately(ped)
+                                    local lastPed = LocalPlayer.state.lastPed
                                     lastPed[#lastPed + 1] = ped
+                                    LocalPlayer.state.lastPed = lastPed
                                     exports.ox_target:removeEntity(targetPedSale, optionNamesTargetPed)
                                 end,
                             },
@@ -187,64 +199,72 @@ local function sellToPed(ped)
                                 icon = 'fas fa-x',
                                 label = locale('info.decline_offer'),
                                 onSelect = function()
-                                    currentOfferDrug = nil
+                                    LocalPlayer.state.currentOfferDrug = nil
                                     exports.qbx_core:Notify(locale('error.offer_declined'), 'error')
-                                    hasTarget = false
+                                    LocalPlayer.state.hasTarget = false
                                     SetPedKeepTask(ped, false)
                                     SetEntityAsNoLongerNeeded(ped)
                                     ClearPedTasksImmediately(ped)
+                                    local lastPed = LocalPlayer.state.lastPed
                                     lastPed[#lastPed + 1] = ped
+                                    LocalPlayer.state.lastPed = lastPed
                                     exports.ox_target:removeEntity(targetPedSale, optionNamesTargetPed)
                                 end,
                             },
                         }
                         exports.ox_target:addEntity(targetPedSale, options)
                     elseif not config.useTarget then
-                        if not textDrawn then
-                            textDrawn = true
+                        if not LocalPlayer.state.textDrawn then
+                            LocalPlayer.state.textDrawn = true
                             lib.showTextUI(locale('info.drug_offer', currentOfferDrug.amount, currentOfferDrug.chosen.label, currentOfferDrug.total))
                         end
                         if IsControlJustPressed(0, 38) then
                             lib.hideTextUI()
-                            textDrawn = false
+                            LocalPlayer.state.textDrawn = false
                             TriggerServerEvent('qbx_drugs:server:sellCornerDrugs', currentOfferDrug.idx, currentOfferDrug.amount, currentOfferDrug.total)
-                            hasTarget = false
+                            LocalPlayer.state.hasTarget = false
                             lib.playAnim(cache.ped, 'gestures@f@standing@casual', 'gesture_point', 3.0, 3.0, -1, 49, 0, false, false, false)
                             Wait(650)
                             ClearPedTasks(cache.ped)
                             SetPedKeepTask(ped, false)
                             SetEntityAsNoLongerNeeded(ped)
                             ClearPedTasksImmediately(ped)
+                            local lastPed = LocalPlayer.state.lastPed
                             lastPed[#lastPed + 1] = ped
+                            LocalPlayer.state.lastPed = lastPed
                             break
                         end
                         if IsControlJustPressed(0, 47) then
                             lib.hideTextUI()
-                            textDrawn = false
+                            LocalPlayer.state.textDrawn = false
                             exports.qbx_core:Notify(locale('error.offer_declined'), 'error')
-                            hasTarget = false
+                            LocalPlayer.state.hasTarget = false
                             SetPedKeepTask(ped, false)
                             SetEntityAsNoLongerNeeded(ped)
                             ClearPedTasksImmediately(ped)
+                            local lastPed = LocalPlayer.state.lastPed
                             lastPed[#lastPed + 1] = ped
+                            LocalPlayer.state.lastPed = lastPed
                             break
                         end
                     end
                 else
                     if config.useTarget then
-                        zoneMade = false
+                        LocalPlayer.state.zoneMade = false
                         exports.ox_target:removeEntity(targetPedSale, optionNamesTargetPed)
                     else
-                        if textDrawn then
+                        if LocalPlayer.state.textDrawn then
                             lib.hideTextUI()
-                            textDrawn = false
+                            LocalPlayer.state.textDrawn = false
                         end
                     end
-                    hasTarget = false
+                    LocalPlayer.state.hasTarget = false
                     SetPedKeepTask(ped, false)
                     SetEntityAsNoLongerNeeded(ped)
                     ClearPedTasksImmediately(ped)
+                    local lastPed = LocalPlayer.state.lastPed
                     lastPed[#lastPed + 1] = ped
+                    LocalPlayer.state.lastPed = lastPed
                     break
                 end
             end
@@ -255,14 +275,14 @@ local function sellToPed(ped)
 end
 
 local function toggleSelling()
-    if not cornerselling then
-        cornerselling = true
+    if not LocalPlayer.state.isSelling then
+        LocalPlayer.state.isSelling = true
         exports.qbx_core:Notify(locale('info.started_selling_drugs'))
         local startLocation = GetEntityCoords(cache.ped)
         CreateThread(function()
-            while cornerselling do
+            while LocalPlayer.state.isSelling do
                 local coords = GetEntityCoords(cache.ped)
-                if not hasTarget then
+                if not LocalPlayer.state.hasTarget then
                     local closestPed = lib.getClosestPed(coords, 15.0)
                     if closestPed ~= nil and not IsPedInAnyVehicle(closestPed, false) and GetPedType(closestPed) ~= 28 then
                         sellToPed(closestPed)
@@ -276,19 +296,24 @@ local function toggleSelling()
             end
         end)
     else
-        stealingPed = nil
-        stealData = {}
-        cornerselling = false
+        LocalPlayer.state.stealingPed = nil
+        LocalPlayer.state.stealData = {}
+        LocalPlayer.state.isSelling = false
+        LocalPlayer.state.zoneMade = false
+        LocalPlayer.state.textDrawn = false
         exports.qbx_core:Notify(locale('info.stopped_selling_drugs'))
     end
 end
 
 -- Events
+
 RegisterNetEvent('qbx_drugs:client:cornerselling', function()
-    if CurrentCops >= config.minimumDrugSalePolice then
+    local currentCops = lib.callback.await('qbx_drugs:server:getPoliceCount', false)
+    if currentCops >= config.minimumDrugSalePolice then
         local hasDrugs = not not lib.callback.await('qbx_drugs:server:getDrugOffer', false)
         if hasDrugs then
             toggleSelling()
+            exports.qbx_core:Notify("Corner selling enabled", 'success')
         else
             exports.qbx_core:Notify(locale('error.has_no_drugs'), 'error')
         end
@@ -297,11 +322,21 @@ RegisterNetEvent('qbx_drugs:client:cornerselling', function()
     end
 end)
 
--- This is a debug to ensure it works
--- RegisterCommand('startSelling', function(source, args)
---     TriggerEvent('qbx_drugs:client:cornerselling')
--- end)
+-- Command for corner selling
+RegisterCommand('sellcorner', function()
+    TriggerEvent('qbx_drugs:client:cornerselling')
+end, false)
 
-RegisterNetEvent('police:SetCopCount', function(amount)
-    CurrentCops = amount
+-- Cleanup on disconnect
+AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
+    if not value then
+        LocalPlayer.state.isSelling = false
+        LocalPlayer.state.hasTarget = false
+        LocalPlayer.state.currentOfferDrug = nil
+        LocalPlayer.state.lastPed = {}
+        LocalPlayer.state.stealingPed = nil
+        LocalPlayer.state.stealData = {}
+        LocalPlayer.state.zoneMade = false
+        LocalPlayer.state.textDrawn = false
+    end
 end)
