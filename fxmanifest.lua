@@ -22,6 +22,7 @@ server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/deliveries.lua',
     'server/cornerselling.lua',
+    'server/shops.lua'
 }
 
 files {

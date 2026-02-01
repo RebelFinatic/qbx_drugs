@@ -4,7 +4,6 @@ local sharedConfig = require 'config.shared'
 ---@diagnostic disable-next-line: param-type-mismatch
 AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
     if value then
-        sharedConfig.dealers = lib.callback.await('qbx_drugs:server:RequestConfig', false)
         InitZones()
     else
         if not config.useTarget then
@@ -39,19 +38,10 @@ local function getClosestDealer()
     end
 end
 
----@todo Move to ox_inventory Shop
 local function openDealerShop()
     getClosestDealer()
-    local repItems = {}
-    repItems.label = sharedConfig.dealers[LocalPlayer.state.currentDealer].name
-    repItems.items = {}
-    repItems.slots = 30
-    for k, _ in pairs(sharedConfig.dealers[LocalPlayer.state.currentDealer].products) do
-        if QBX.PlayerData.metadata.dealerrep >= sharedConfig.dealers[LocalPlayer.state.currentDealer].products[k].minrep then
-            repItems.items[k] = sharedConfig.dealers[LocalPlayer.state.currentDealer].products[k]
-        end
-    end
-    TriggerServerEvent('inventory:server:OpenInventory', 'shop', 'Dealer_'..sharedConfig.dealers[LocalPlayer.state.currentDealer].name, repItems)
+    local dealerName = sharedConfig.dealers[LocalPlayer.state.currentDealer].name
+    exports.ox_inventory:openInventory('shop', { type = 'Dealer_' .. dealerName })
 end
 
 local function knockDoorAnim(home)
@@ -210,7 +200,6 @@ local function setMapBlip(x, y)
 end
 
 -- PolyZone specific functions
-
 function AwaitingInput()
     if LocalPlayer.state.waitingKeyPress then return end -- Prevent multiple threads
     CreateThread(function()
@@ -240,8 +229,12 @@ function AwaitingInput()
 end
 
 function InitZones()
+    print('[qbx_drugs] Initializing zones... useTarget:', config.useTarget)
+    print('[qbx_drugs] Number of dealers:', #sharedConfig.dealers)
+
     if config.useTarget then
         for k, v in pairs(sharedConfig.dealers) do
+            print('[qbx_drugs] Creating target zone for dealer:', k, 'at', v.coords.x, v.coords.y, v.coords.z)
 
             exports.ox_target:addBoxZone({
                 name = 'dealer_'..k,
@@ -292,13 +285,14 @@ function InitZones()
                     }
                 }
             })
-
         end
     else
         -- ox_lib zones for non-target mode
         local dealerZones = {}
 
         for k, v in pairs(sharedConfig.dealers) do
+            print('[qbx_drugs] Creating lib zone for dealer:', k, 'at', v.coords.x, v.coords.y, v.coords.z)
+
             local zone = lib.zones.box({
                 coords = vec3(v.coords.x, v.coords.y, v.coords.z),
                 size = vec3(1.5, 1.5, 2.0),
@@ -328,29 +322,6 @@ function InitZones()
 end
 
 -- Events
-
-RegisterNetEvent('qbx_drugs:client:RefreshDealers', function(DealerData)
-    if not config.useTarget then
-        local dealerZones = LocalPlayer.state.dealerZones
-        if dealerZones then
-            for _, zone in pairs(dealerZones) do
-                zone:remove()
-            end
-            LocalPlayer.state.dealerZones = nil
-        end
-    end
-    sharedConfig.dealers = DealerData
-    Wait(1000)
-    InitZones()
-end)
-
-RegisterNetEvent('qbx_drugs:client:updateDealerItems', function(itemData, amount)
-    TriggerServerEvent('qbx_drugs:server:updateDealerItems', itemData, amount, LocalPlayer.state.currentDealer)
-end)
-
-RegisterNetEvent('qbx_drugs:client:setDealerItems', function(itemData, amount, dealer)
-    sharedConfig.dealers[dealer].products[itemData.slot].amount = sharedConfig.dealers[dealer].products[itemData.slot].amount - amount
-end)
 
 RegisterNetEvent('qbx_drugs:client:setLocation', function(locationData)
     local activeDelivery = LocalPlayer.state.activeDelivery
