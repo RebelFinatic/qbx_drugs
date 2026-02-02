@@ -31,6 +31,7 @@
         "suspicious_situation": "Suspicious situation",
         "possible_drug_dealing": "Possible drug dealing",
         "drug_offer": "[E] Sell %sx %s for $%s? / [G] Decline offer",
+        "target_drug_offer": "Sell %sx %s for $%s",
         "decline_offer": "Decline offer",
         "search_ped": "Search ped",
         "pick_up_button": "[E] Pick up",

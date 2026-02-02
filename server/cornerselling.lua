@@ -3,6 +3,26 @@ local config = require 'config.server'
 -- Server-side offer tracking to prevent client manipulation
 local activeOffers = {}
 
+-- Rate limiting to prevent event spam
+local rateLimits = {}
+local RATE_LIMIT_MS = 2000 -- 2 seconds between actions
+
+---@param src number Player source
+---@param action string Action name for rate limiting
+---@return boolean allowed Whether the action is allowed
+local function checkRateLimit(src, action)
+    local key = src .. '_' .. action
+    local now = GetGameTimer()
+    local lastTime = rateLimits[key] or 0
+
+    if now - lastTime < RATE_LIMIT_MS then
+        return false
+    end
+
+    rateLimits[key] = now
+    return true
+end
+
 -- Callback to get the current count of on-duty police officers
 lib.callback.register('qbx_drugs:server:getPoliceCount', function()
     local policeCount = exports.qbx_core:GetDutyCountJob('police')
@@ -58,6 +78,7 @@ RegisterNetEvent('qbx_drugs:server:giveStealItems', function()
     local player = exports.qbx_core:GetPlayer(src)
 
     if not player then return end
+    if not checkRateLimit(src, 'steal') then return end
 
     -- Validate against stored robbery state
     local robbery = activeRobberies[src]
@@ -79,6 +100,7 @@ RegisterNetEvent('qbx_drugs:server:sellCornerDrugs', function()
     local player = exports.qbx_core:GetPlayer(src)
 
     if not player then return end
+    if not checkRateLimit(src, 'sell') then return end
 
     -- Validate against stored offer
     local offer = activeOffers[src]
@@ -115,6 +137,7 @@ RegisterNetEvent('qbx_drugs:server:robCornerDrugs', function()
     local player = exports.qbx_core:GetPlayer(src)
 
     if not player then return end
+    if not checkRateLimit(src, 'rob') then return end
 
     -- Validate against stored offer
     local offer = activeOffers[src]
@@ -145,4 +168,10 @@ AddEventHandler('playerDropped', function()
     local src = source
     activeOffers[src] = nil
     activeRobberies[src] = nil
+    -- Clean up rate limits for this player
+    for key in pairs(rateLimits) do
+        if string.find(key, '^' .. src .. '_') then
+            rateLimits[key] = nil
+        end
+    end
 end)

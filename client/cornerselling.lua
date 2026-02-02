@@ -14,6 +14,14 @@ if LocalPlayer.state.textDrawn == nil then
     LocalPlayer.state.textDrawn = false
 end
 
+---Adds a ped to the lastPed list to prevent re-targeting
+---@param ped number The ped entity to add
+local function addToLastPed(ped)
+    local lastPed = LocalPlayer.state.lastPed
+    lastPed[#lastPed + 1] = ped
+    LocalPlayer.state.lastPed = lastPed
+end
+
 local function tooFarAway()
     exports.qbx_core:Notify(locale('error.too_far_away'), 'error')
     LocalPlayer.state.isSelling = false
@@ -169,13 +177,9 @@ local function sellToPed(ped)
                     amount = currentOfferDrug.amount,
                 }
                 LocalPlayer.state.hasTarget = false
-                local moveTo = GetEntityCoords(cache.ped)
-                local moveToCoords = vec3(moveTo.x + math.random(100, 500), moveTo.y + math.random(100, 500), moveTo.z)
                 ClearPedTasksImmediately(ped)
-                TaskGoStraightToCoord(ped, moveToCoords.x, moveToCoords.y, moveToCoords.z, 15.0, -1, 0.0, 0.0)
-                local lastPed = LocalPlayer.state.lastPed
-                lastPed[#lastPed + 1] = ped
-                LocalPlayer.state.lastPed = lastPed
+                TaskSmartFleePed(ped, cache.ped, 100.0, -1, false, false)
+                addToLastPed(ped)
                 robberyPed()
                 break
             else
@@ -199,9 +203,7 @@ local function sellToPed(ped)
                                     SetPedKeepTask(ped, false)
                                     SetEntityAsNoLongerNeeded(ped)
                                     ClearPedTasksImmediately(ped)
-                                    local lastPed = LocalPlayer.state.lastPed
-                                    lastPed[#lastPed + 1] = ped
-                                    LocalPlayer.state.lastPed = lastPed
+                                    addToLastPed(ped)
                                     exports.ox_target:removeEntity(targetPedSale, optionNamesTargetPed)
                                 end,
                             },
@@ -216,9 +218,7 @@ local function sellToPed(ped)
                                     SetPedKeepTask(ped, false)
                                     SetEntityAsNoLongerNeeded(ped)
                                     ClearPedTasksImmediately(ped)
-                                    local lastPed = LocalPlayer.state.lastPed
-                                    lastPed[#lastPed + 1] = ped
-                                    LocalPlayer.state.lastPed = lastPed
+                                    addToLastPed(ped)
                                     exports.ox_target:removeEntity(targetPedSale, optionNamesTargetPed)
                                 end,
                             },
@@ -242,9 +242,7 @@ local function sellToPed(ped)
                             SetPedKeepTask(ped, false)
                             SetEntityAsNoLongerNeeded(ped)
                             ClearPedTasksImmediately(ped)
-                            local lastPed = LocalPlayer.state.lastPed
-                            lastPed[#lastPed + 1] = ped
-                            LocalPlayer.state.lastPed = lastPed
+                            addToLastPed(ped)
                             break
                         end
                         if IsControlJustPressed(0, 47) then
@@ -255,9 +253,7 @@ local function sellToPed(ped)
                             SetPedKeepTask(ped, false)
                             SetEntityAsNoLongerNeeded(ped)
                             ClearPedTasksImmediately(ped)
-                            local lastPed = LocalPlayer.state.lastPed
-                            lastPed[#lastPed + 1] = ped
-                            LocalPlayer.state.lastPed = lastPed
+                            addToLastPed(ped)
                             break
                         end
                     end
@@ -275,9 +271,7 @@ local function sellToPed(ped)
                     SetPedKeepTask(ped, false)
                     SetEntityAsNoLongerNeeded(ped)
                     ClearPedTasksImmediately(ped)
-                    local lastPed = LocalPlayer.state.lastPed
-                    lastPed[#lastPed + 1] = ped
-                    LocalPlayer.state.lastPed = lastPed
+                    addToLastPed(ped)
                     break
                 end
             end
