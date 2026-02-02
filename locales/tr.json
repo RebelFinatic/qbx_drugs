@@ -21,7 +21,8 @@
         "teleported_to_dealer": "%s konumuna ışınlandınız",
         "offer_accepted": "Teklif kabul edildi",
         "order_delivered": "Sipariş teslim edildi",
-        "dealer_deleted": "%s satıcısı silindi"
+        "dealer_deleted": "%s satıcısı silindi",
+        "corner_selling_enabled": "Sokak satışı etkinleştirildi"
     },
     "info": {
         "started_selling_drugs": "Uyuşturucu satmaya başladınız",

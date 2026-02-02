@@ -21,7 +21,8 @@
         "teleported_to_dealer": "Je bent geleteporteerd naar %s",
         "offer_accepted": "Aanbod geaccepteerd",
         "order_delivered": "De bestelling is geleverd",
-        "dealer_deleted": "Dealer %s is verwijderd"
+        "dealer_deleted": "Dealer %s is verwijderd",
+        "corner_selling_enabled": "Straatverkoop geactiveerd"
     },
     "info": {
         "started_selling_drugs": "Je bent gestart met het verkopen van drugs",

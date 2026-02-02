@@ -21,7 +21,8 @@
         "teleported_to_dealer": "Foste teleportado para %s",
         "offer_accepted": "Oferta aceite",
         "order_delivered": "A encomenda foi entregue",
-        "dealer_deleted": "Dealer %s foi apagado"
+        "dealer_deleted": "Dealer %s foi apagado",
+        "corner_selling_enabled": "Venda de rua ativada"
     },
     "info": {
         "started_selling_drugs": "Começaste a vender drogas",

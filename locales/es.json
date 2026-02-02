@@ -21,7 +21,8 @@
         "teleported_to_dealer": "Te has teletransportado %s",
         "offer_accepted": "Oferta aceptada",
         "order_delivered": "El pedido ha sido entregado",
-        "dealer_deleted": "Dealer %s se ha eliminado"
+        "dealer_deleted": "Dealer %s se ha eliminado",
+        "corner_selling_enabled": "Venta callejera activada"
     },
     "info": {
         "started_selling_drugs": "Empezaste a vender drogas",

@@ -21,7 +21,8 @@
         "teleported_to_dealer": "%s لقد تم نقلك إلى",
         "offer_accepted": "تم القبول",
         "order_delivered": "تم تسليم الطلب",
-        "dealer_deleted": "%s تم الحدف"
+        "dealer_deleted": "%s تم الحدف",
+        "corner_selling_enabled": "تم تفعيل البيع في الشارع"
     },
     "info": {
         "started_selling_drugs": "لقد بدأت في بيع المخدرات",

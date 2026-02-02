@@ -21,7 +21,8 @@
         "teleported_to_dealer": "Przeteleportowano do %s",
         "offer_accepted": "Oferta zaakceptowana",
         "order_delivered": "Zamówienie zostało dostarczone",
-        "dealer_deleted": "Diler %s został usunięty"
+        "dealer_deleted": "Diler %s został usunięty",
+        "corner_selling_enabled": "Sprzedaż uliczna włączona"
     },
     "info": {
         "started_selling_drugs": "Zaczęto sprzedawać narkotyki",

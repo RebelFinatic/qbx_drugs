@@ -21,7 +21,8 @@
         "teleported_to_dealer": "Byl jsi teleportován k %s",
         "offer_accepted": "Nabídka přijata",
         "order_delivered": "Objednávka byla doručena",
-        "dealer_deleted": "Obchodník %s byl smazán"
+        "dealer_deleted": "Obchodník %s byl smazán",
+        "corner_selling_enabled": "Pouliční prodej povolen"
     },
     "info": {
         "started_selling_drugs": "Začal jsi prodávat drogy",
