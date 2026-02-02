@@ -212,15 +212,13 @@ function AwaitingInput()
             elseif LocalPlayer.state.dealerIsHome then
                 if IsControlJustPressed(0, 38) then
                     openDealerShop()
-                    LocalPlayer.state.waitingKeyPress = false
+                    -- Don't exit loop, just wait for next input
                 end
                 if IsControlJustPressed(0, 47) then
-                    if LocalPlayer.state.waitingDelivery then
-                        LocalPlayer.state.waitingKeyPress = false
-                    end
                     requestDelivery()
                     LocalPlayer.state.dealerIsHome = false
-                    LocalPlayer.state.waitingKeyPress = false
+                    -- Update text UI to show knock button again
+                    lib.showTextUI(locale('info.knock_button'), { position = 'left-center' })
                 end
             end
             Wait(0)
@@ -230,11 +228,10 @@ end
 
 function InitZones()
     print('[qbx_drugs] Initializing zones... useTarget:', config.useTarget)
-    print('[qbx_drugs] Number of dealers:', #sharedConfig.dealers)
 
     if config.useTarget then
         for k, v in pairs(sharedConfig.dealers) do
-            print('[qbx_drugs] Creating target zone for dealer:', k, 'at', v.coords.x, v.coords.y, v.coords.z)
+
 
             exports.ox_target:addBoxZone({
                 name = 'dealer_'..k,
@@ -291,7 +288,7 @@ function InitZones()
         local dealerZones = {}
 
         for k, v in pairs(sharedConfig.dealers) do
-            print('[qbx_drugs] Creating lib zone for dealer:', k, 'at', v.coords.x, v.coords.y, v.coords.z)
+            print('[qbx_drugs] Creating lib zone for dealer:', k)
 
             local zone = lib.zones.box({
                 coords = vec3(v.coords.x, v.coords.y, v.coords.z),
@@ -342,7 +339,7 @@ RegisterNetEvent('qbx_drugs:client:setLocation', function(locationData)
             coords = vec3(locationData.coords.x, locationData.coords.y, locationData.coords.z),
             size = vec3(1.5, 1.5, 2.0),
             rotation = 0.0,
-            debug = true,
+            debug = false,
             options = {
                 {
                     icon = 'fas fa-user-secret',
@@ -363,7 +360,7 @@ RegisterNetEvent('qbx_drugs:client:setLocation', function(locationData)
             coords = vec3(locationData.coords.x, locationData.coords.y, locationData.coords.z),
             size = vec3(1.5, 1.5, 2.0),
             rotation = 0.0,
-            debug = true,
+            debug = false,
             onEnter = function()
                 inDeliveryZone = true
                 LocalPlayer.state.drugDeliveryZone = drugDeliveryZone

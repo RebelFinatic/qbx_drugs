@@ -1,6 +1,9 @@
 local config = require 'config.server'
 local sharedConfig = require 'config.shared'
 
+-- Server-side delivery tracking to prevent exploitation
+local activeDeliveries = {}
+
 exports('GetDealers', function()
     return sharedConfig.dealers
 end)
@@ -71,11 +74,7 @@ RegisterNetEvent('qbx_drugs:server:successDelivery', function(deliveryData, inTi
             end
             SetTimeout(math.random(5000, 10000), function()
                 TriggerClientEvent('qbx_drugs:client:sendDeliveryMail', src, 'bad', deliveryData)
-                if curRep - 1 > 0 then
-                    player.Functions.SetMetaData('dealerrep', (curRep - config.deliveryRepLoss))
-                else
-                    player.Functions.SetMetaData('dealerrep', 0)
-                end
+                player.Functions.SetMetaData('dealerrep', math.max(0, curRep - config.deliveryRepLoss))
             end)
         end
     else
@@ -85,26 +84,18 @@ RegisterNetEvent('qbx_drugs:server:successDelivery', function(deliveryData, inTi
             player.Functions.AddMoney('cash', math.floor(payout / config.overdueDeliveryFee), 'delivery-drugs-too-late')
             SetTimeout(math.random(5000, 10000), function()
                 TriggerClientEvent('qbx_drugs:client:sendDeliveryMail', src, 'late', deliveryData)
-                if curRep - 1 > 0 then
-                    player.Functions.SetMetaData('dealerrep', (curRep - config.deliveryRepLoss))
-                else
-                    player.Functions.SetMetaData('dealerrep', 0)
-                end
+                player.Functions.SetMetaData('dealerrep', math.max(0, curRep - config.deliveryRepLoss))
             end)
         else
             if invItemCount then
                 local newItemAmount = invItemCount
                 local modifiedPayout = deliveryData.itemData.payout * newItemAmount
                 exports.qbx_core:Notify(src, locale('error.too_late'), 'error')
-                exports.ox_inventory:RemoveItem(src, item, itemAmount)
+                exports.ox_inventory:RemoveItem(src, item, newItemAmount)
                 player.Functions.AddMoney('cash', math.floor(modifiedPayout / config.overdueDeliveryFee), 'delivery-drugs-too-late')
                 SetTimeout(math.random(5000, 10000), function()
                     TriggerClientEvent('qbx_drugs:client:sendDeliveryMail', src, 'late', deliveryData)
-                    if curRep - 1 > 0 then
-                        player.Functions.SetMetaData('dealerrep', (curRep - config.deliveryRepLoss))
-                    else
-                        player.Functions.SetMetaData('dealerrep', 0)
-                    end
+                    player.Functions.SetMetaData('dealerrep', math.max(0, curRep - config.deliveryRepLoss))
                 end)
             end
         end

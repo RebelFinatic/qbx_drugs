@@ -21,7 +21,8 @@
         "teleported_to_dealer": "You have been teleported to %s",
         "offer_accepted": "Offer accepted",
         "order_delivered": "The order has been delivered",
-        "dealer_deleted": "Dealer %s has been deleted"
+        "dealer_deleted": "Dealer %s has been deleted",
+        "corner_selling_enabled": "Corner selling enabled"
     },
     "info": {
         "started_selling_drugs": "You started selling drugs",
