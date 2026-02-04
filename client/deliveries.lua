@@ -63,7 +63,11 @@ end
 local function requestDelivery()
     if not waitingDelivery then
         getClosestDealer()
-        exports.qbx_core:Notify(locale('info.sending_delivery_email'), 'success')
+        if config.usePhone then
+            exports.qbx_core:Notify(locale('info.sending_delivery_email'), 'success')
+        else
+            exports.qbx_core:Notify(locale('info.requesting_delivery'), 'success')
+        end
         TriggerServerEvent('qbx_drugs:server:requestDelivery', currentDealer)
     else
         exports.qbx_core:Notify(locale('error.pending_delivery'), 'error')
@@ -284,7 +288,7 @@ end)
 RegisterNetEvent('qbx_drugs:client:startDelivery', function(data)
     waitingDelivery = data
     SetTimeout(2000, function()
-        TriggerServerEvent('qb-phone:server:sendNewMail', {
+        sendNotification({
             sender = sharedConfig.dealers[data.dealer].name,
             subject = 'Delivery Location',
             message = locale('info.delivery_info_email', data.amount, data.itemLabel),
@@ -292,7 +296,10 @@ RegisterNetEvent('qbx_drugs:client:startDelivery', function(data)
                 enabled = true,
                 buttonEvent = 'qbx_drugs:client:setLocation',
                 buttonData = data
-            }
+            },
+            -- Extra data for non-phone fallback
+            isLocationEmail = true,
+            locationData = data
         })
     end)
 end)
@@ -382,3 +389,36 @@ RegisterNetEvent('qbx_drugs:client:sendDeliveryMail', function(type, deliveryDat
         message = message
     })
 end)
+
+---@param data table
+function sendNotification(data)
+    if config.usePhone then
+        TriggerServerEvent('qb-phone:server:sendNewMail', {
+            sender = data.sender,
+            subject = data.subject,
+            message = data.message,
+            button = data.button
+        })
+    else
+        -- Fallback for no phone
+        if data.isLocationEmail and data.locationData then
+            -- Auto-set location since we can't click the email button
+            TriggerEvent('qbx_drugs:client:setLocation', data.locationData)
+            lib.notify({
+                title = data.subject,
+                description = data.message,
+                type = 'inform',
+                duration = 10000,
+                icon = 'envelope'
+            })
+        else
+            lib.notify({
+                title = data.subject .. ' - ' .. data.sender,
+                description = data.message,
+                type = 'inform',
+                duration = 5000,
+                icon = 'envelope'
+            })
+        end
+    end
+end

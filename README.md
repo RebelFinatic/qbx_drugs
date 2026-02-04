@@ -14,6 +14,7 @@ A secure and advanced drug selling system for Qbox servers. This resource allows
     - Earn reputation to unlock better jobs and payouts.
 - **Secure & Fair**: Built with advanced security to prevent cheaters from exploiting money or items. The server controls everything.
 - **Optimized**: Designed to run smoothly without causing lag, even with many players online.
+- **Phone Optional**: Works with or without `qb-phone`. If disabled, it uses notifications and automatic GPS navigation.
 
 ## Installation
 
@@ -31,7 +32,9 @@ Everything you need to change is in the `config/` folder.
 
 - **`config/shared.lua`**: Change the dealers, what drugs they accept, where deliveries go, and how much they pay.
     - *Note for Owners:* You can add as many delivery locations as you want here.
-- **`config/client.lua`**: Simple settings like how many police are needed, chances of success, and robbery percentages.
+- **`config/client.lua`**:
+    - `usePhone`: Set to `true` to use `qb-phone` email. Set to `false` for notifications and auto-GPS.
+    - Other settings: Police count, success chances, etc.
 
 ### Enabling "Third Eye" (Target)
 If you want to use `ox_target` (Alt-eye interaction) instead of button prompts:
