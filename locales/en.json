@@ -44,6 +44,7 @@
         "reviving_player": "Helping person back up...",
         "dealer_name": "Dealer %s",
         "sending_delivery_email": "These are the products, I'll keep in touch through email",
+        "requesting_delivery": "Requesting delivery coordinates...",
         "mystery_man_knock_message": "Hello my child, what can I do for you?",
         "treated_fred_bad": "Unfortunately I don't do business anymore ... You should have treated me better",
         "fred_knock_message": "Yo %s, what can I do for you?",
