@@ -113,38 +113,29 @@ end
 local function requestDelivery()
     if not LocalPlayer.state.waitingDelivery then
         getClosestDealer()
-        local location = math.random(1, #config.deliveryLocations)
-        local amount = math.random(1, 3)
-        local item = randomDeliveryItemOnRep()
-
-        local waitingDelivery = {
-            coords = config.deliveryLocations[location].coords,
-            locationLabel = config.deliveryLocations[location].label,
-            amount = amount,
-            dealer = LocalPlayer.state.currentDealer,
-            itemData = sharedConfig.deliveryItems[item],
-            item = item
-        }
-        LocalPlayer.state.waitingDelivery = waitingDelivery
-
         exports.qbx_core:Notify(locale('info.sending_delivery_email'), 'success')
-        TriggerServerEvent('qbx_drugs:server:giveDeliveryItems', waitingDelivery)
-        SetTimeout(2000, function()
-            TriggerServerEvent('qb-phone:server:sendNewMail', {
-                sender = sharedConfig.dealers[LocalPlayer.state.currentDealer].name,
-                subject = 'Delivery Location',
-                message = locale('info.delivery_info_email', amount, exports.ox_inventory:Items()[waitingDelivery.itemData.item].label),
-                button = {
-                    enabled = true,
-                    buttonEvent = 'qbx_drugs:client:setLocation',
-                    buttonData = waitingDelivery
-                }
-            })
-        end)
+        TriggerServerEvent('qbx_drugs:server:requestDelivery', LocalPlayer.state.currentDealer)
     else
         exports.qbx_core:Notify(locale('error.pending_delivery'), 'error')
     end
 end
+
+RegisterNetEvent('qbx_drugs:client:startDelivery', function(data)
+    LocalPlayer.state.waitingDelivery = data
+
+    SetTimeout(2000, function()
+        TriggerServerEvent('qb-phone:server:sendNewMail', {
+            sender = sharedConfig.dealers[data.dealer].name,
+            subject = 'Delivery Location',
+            message = locale('info.delivery_info_email', data.amount, data.itemLabel),
+            button = {
+                enabled = true,
+                buttonEvent = 'qbx_drugs:client:setLocation',
+                buttonData = data
+            }
+        })
+    end)
+end)
 
 local function deliveryTimer()
     CreateThread(function()

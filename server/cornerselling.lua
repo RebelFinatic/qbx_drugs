@@ -11,15 +11,15 @@ local RATE_LIMIT_MS = 2000 -- 2 seconds between actions
 ---@param action string Action name for rate limiting
 ---@return boolean allowed Whether the action is allowed
 local function checkRateLimit(src, action)
-    local key = src .. '_' .. action
+    if not rateLimits[src] then rateLimits[src] = {} end
     local now = GetGameTimer()
-    local lastTime = rateLimits[key] or 0
+    local lastTime = rateLimits[src][action] or 0
 
     if now - lastTime < RATE_LIMIT_MS then
         return false
     end
 
-    rateLimits[key] = now
+    rateLimits[src][action] = now
     return true
 end
 
@@ -168,10 +168,5 @@ AddEventHandler('playerDropped', function()
     local src = source
     activeOffers[src] = nil
     activeRobberies[src] = nil
-    -- Clean up rate limits for this player
-    for key in pairs(rateLimits) do
-        if string.find(key, '^' .. src .. '_') then
-            rateLimits[key] = nil
-        end
-    end
+    rateLimits[src] = nil
 end)
