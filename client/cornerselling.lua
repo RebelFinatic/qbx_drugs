@@ -9,13 +9,19 @@ local stealingPed = nil
 local stealData = {}
 local zoneMade = false
 local textDrawn = false
+local sellingPoint = nil
 
 ---@param ped number
 local function addToLastPed(ped)
     lastPeds[#lastPeds + 1] = ped
 end
 
-local function resetState()
+local function stopSelling()
+    if sellingPoint then
+        sellingPoint:remove()
+        sellingPoint = nil
+    end
+
     isSelling = false
     hasTarget = false
     currentOffer = nil
@@ -26,12 +32,7 @@ local function resetState()
     lastPeds = {}
 end
 
-local function tooFarAway()
-    exports.qbx_core:Notify(locale('error.too_far_away'), 'error')
-    isSelling = false
-    hasTarget = false
-    currentOffer = nil
-end
+
 
 local function handleRobbery(ped)
     if not stealingPed then return end
@@ -129,28 +130,29 @@ local function interactWithPed(ped)
     local optionNames = { 'selldrugs', 'declineoffer' }
 
     -- Walking logic
-    local function walkToPlayer()
-        SetEntityAsNoLongerNeeded(ped)
-        ClearPedTasks(ped)
-        local playerCoords = GetEntityCoords(cache.ped)
-        TaskGoStraightToCoord(ped, playerCoords.x, playerCoords.y, playerCoords.z, 1.2, -1, 0.0, 0.0)
+    SetEntityAsNoLongerNeeded(ped)
+    ClearPedTasks(ped)
 
-        while true do
-            local pedCoords = GetEntityCoords(ped)
-            local dist = #(playerCoords - pedCoords)
+    TaskGoToEntity(ped, cache.ped, -1, 1.5, 1.2, 1073741824, 0)
 
-            if dist <= 1.5 then return true end
-            if dist > 15.0 or IsPedDeadOrDying(ped, true) or not isSelling then return false end
+    local timeout = 200 -- Approx 10 seconds
+    local arrived = false
 
-            -- Recalculate target if player moves
-            playerCoords = GetEntityCoords(cache.ped)
-            TaskGoStraightToCoord(ped, playerCoords.x, playerCoords.y, playerCoords.z, 1.2, -1, 0.0, 0.0)
-
-            Wait(500)
+    while timeout > 0 do
+        local dist = #(GetEntityCoords(ped) - GetEntityCoords(cache.ped))
+        if dist <= 1.6 then
+            arrived = true
+            break
         end
+        if IsPedDeadOrDying(ped, true) or not isSelling then
+            hasTarget = false
+            return
+        end
+        timeout -= 1
+        Wait(50)
     end
 
-    if not walkToPlayer() then
+    if not arrived then
         hasTarget = false
         return
     end
@@ -286,8 +288,8 @@ local function interactWithPed(ped)
 end
 
 local function toggleSelling()
-    if isSelling then
-        resetState()
+    if sellingPoint then
+        stopSelling()
         exports.qbx_core:Notify(locale('info.stopped_selling_drugs'))
         return
     end
@@ -302,21 +304,16 @@ local function toggleSelling()
     isSelling = true
     currentOffer = nil -- Reset offer until we find a ped
     exports.qbx_core:Notify(locale('info.started_selling_drugs'))
+
     local startLocation = GetEntityCoords(cache.ped)
 
-    CreateThread(function()
-        while isSelling do
-            local myCoords = GetEntityCoords(cache.ped)
-
-            -- Radius check
-            if #(startLocation - myCoords) > 15.0 then
-                tooFarAway()
-                break
-            end
-
-            -- Find customer if we don't have one
+    sellingPoint = lib.points.new({
+        coords = startLocation,
+        distance = 15.0,
+        interval = 1000,
+        nearby = function()
             if not hasTarget and not currentOffer then
-                local ped = lib.getClosestPed(myCoords, 10.0)
+                local ped = lib.getClosestPed(startLocation, 10.0)
                 if ped and not IsPedInAnyVehicle(ped, true) and not IsPedAPlayer(ped) then
                     local isUsed = false
                     for _, v in ipairs(lastPeds) do
@@ -328,20 +325,25 @@ local function toggleSelling()
                         local offer = lib.callback.await('qbx_drugs:server:getDrugOffer', false)
                         if offer then
                             currentOffer = offer
-                            interactWithPed(ped)
-                            currentOffer = nil -- Reset after interaction
-                            Wait(math.random(3000, 5000)) -- Cooling period
+                            -- Run interaction in separate thread to avoid blocking point interval
+                            CreateThread(function()
+                                interactWithPed(ped)
+                                currentOffer = nil -- Reset after interaction
+                                Wait(math.random(3000, 5000)) -- Cooling period
+                            end)
                         else
-                            isSelling = false
+                            stopSelling()
                             exports.qbx_core:Notify(locale('error.no_drugs_left'), 'error')
                         end
                     end
                 end
             end
-
-            Wait(1000)
+        end,
+        onExit = function()
+            stopSelling()
+            exports.qbx_core:Notify(locale('error.too_far_away'), 'error')
         end
-    end)
+    })
 end
 
 RegisterNetEvent('qbx_drugs:client:cornerselling', function()
@@ -359,6 +361,6 @@ end, false)
 
 AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
     if not value then
-        resetState()
+        stopSelling()
     end
 end)
