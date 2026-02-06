@@ -79,25 +79,32 @@ local function knockDoorAnim(home)
     local knockAnim = 'knockdoor_idle'
 
     TriggerServerEvent('InteractSound_SV:PlayOnSource', 'knock_door', 0.2)
-    Wait(100)
-    lib.playAnim(cache.ped, knockAnimLib, knockAnim, 3.0, 3.0, -1, 1, 0, false, false, false )
-    Wait(3500)
-    lib.playAnim(cache.ped, knockAnimLib, 'exit', 3.0, 3.0, -1, 1, 0, false, false, false)
-    Wait(1000)
 
-    if home then
-        dealerIsHome = true
-        TriggerEvent('chat:addMessage', {
-            color = { 255, 0, 0 },
-            multiline = true,
-            args = {
-                locale('info.dealer_name', sharedConfig.dealers[currentDealer].name),
-                locale('info.fred_knock_message', QBX.PlayerData.charinfo.firstname)
-            }
-        })
-        lib.showTextUI(locale('info.other_dealers_button'), { position = 'left-center' })
-    else
-        exports.qbx_core:Notify(locale('info.no_one_home'), 'error')
+    if lib.progressCircle({
+        duration = 3500,
+        position = 'bottom',
+        useWhileDead = false,
+        canCancel = false, -- Interaction requires completion
+        disable = { car = true, move = true },
+        anim = { dict = knockAnimLib, clip = knockAnim }
+    }) then
+        lib.playAnim(cache.ped, knockAnimLib, 'exit', 3.0, 3.0, -1, 1, 0, false, false, false)
+        Wait(1000)
+
+        if home then
+            dealerIsHome = true
+            TriggerEvent('chat:addMessage', {
+                color = { 255, 0, 0 },
+                multiline = true,
+                args = {
+                    locale('info.dealer_name', sharedConfig.dealers[currentDealer].name),
+                    locale('info.fred_knock_message', QBX.PlayerData.charinfo.firstname)
+                }
+            })
+            lib.showTextUI(locale('info.other_dealers_button'), { position = 'left-center' })
+        else
+            exports.qbx_core:Notify(locale('info.no_one_home'), 'error')
+        end
     end
 end
 
@@ -153,7 +160,6 @@ local function deliverStuff()
     if not isLate then
         Wait(500)
         TriggerEvent('animations:client:EmoteCommandStart', {'bumbin'})
-        TriggerServerEvent('qbx_drugs:server:randomPoliceAlert')
 
         if lib.progressCircle({
             label = locale('info.delivering_products'),
@@ -422,3 +428,24 @@ function sendNotification(data)
         end
     end
 end
+
+RegisterNetEvent('qbx_drugs:client:showDealerMenu', function(dealers)
+    local options = {}
+    for _, v in pairs(dealers) do
+        options[#options+1] = {
+            title = v.name,
+            description = string.format('Coords: %s, %s, %s', v.coords.x, v.coords.y, v.coords.z),
+            icon = 'user-secret',
+            onSelect = function()
+                TriggerServerEvent('qbx_drugs:server:teleportToDealer', v.name)
+            end
+        }
+    end
+
+    lib.registerContext({
+        id = 'dealer_menu_list',
+        title = locale('info.list_dealers_title'),
+        options = options
+    })
+    lib.showContext('dealer_menu_list')
+end)

@@ -49,6 +49,7 @@ return {
         },
     },
     scamChance = 25,
+    robberyChance = 25,
     policeCallChance = 15,
     useMarkedBills = false,
     deliveryRepGain = 1,

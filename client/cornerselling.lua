@@ -160,7 +160,7 @@ local function interactWithPed(ped)
     TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_STAND_IMPATIENT_UPRIGHT', 0, false)
 
     -- Robbery chance
-    if math.random(1, 100) <= config.robberyChance then
+    if currentOffer.shouldRob then
         TriggerServerEvent('qbx_drugs:server:robCornerDrugs')
         exports.qbx_core:Notify(locale('info.has_been_robbed', currentOffer.amount, currentOffer.chosen.label))
 
@@ -186,18 +186,25 @@ local function interactWithPed(ped)
                 icon = 'fas fa-hand-holding-dollar',
                 label = locale('info.target_drug_offer', currentOffer.amount, currentOffer.chosen.label, currentOffer.total),
                 onSelect = function()
-                    TriggerServerEvent('qbx_drugs:server:sellCornerDrugs')
+                    if lib.progressCircle({
+                        duration = 2000,
+                        position = 'bottom',
+                        useWhileDead = false,
+                        canCancel = false,
+                        disable = { car = true, move = true },
+                        anim = { dict = 'gestures@f@standing@casual', clip = 'gesture_point' }
+                    }) then
+                        TriggerServerEvent('qbx_drugs:server:sellCornerDrugs')
+                        exports.ox_target:removeEntity(pedNetId, optionNames)
 
-                    lib.playAnim(cache.ped, 'gestures@f@standing@casual', 'gesture_point', 3.0, 3.0, -1, 49, 0, false, false, false)
-                    exports.ox_target:removeEntity(pedNetId, optionNames)
+                        hasTarget = false
+                        addToLastPed(ped)
 
-                    hasTarget = false
-                    addToLastPed(ped)
-
-                    SetPedKeepTask(ped, false)
-                    SetEntityAsNoLongerNeeded(ped)
-                    ClearPedTasks(ped)
-                    TaskWanderStandard(ped, 10.0, 10)
+                        SetPedKeepTask(ped, false)
+                        SetEntityAsNoLongerNeeded(ped)
+                        ClearPedTasks(ped)
+                        TaskWanderStandard(ped, 10.0, 10)
+                    end
                 end
             },
             {
@@ -250,11 +257,20 @@ local function interactWithPed(ped)
             if IsControlJustPressed(0, 38) then -- E
                 lib.hideTextUI()
                 textDrawn = false
-                TriggerServerEvent('qbx_drugs:server:sellCornerDrugs')
-                lib.playAnim(cache.ped, 'gestures@f@standing@casual', 'gesture_point', 3.0, 3.0, -1, 49, 0, false, false, false)
-                hasTarget = false
-                addToLastPed(ped)
-                TaskWanderStandard(ped, 10.0, 10)
+
+                if lib.progressCircle({
+                    duration = 2000,
+                    position = 'bottom',
+                    useWhileDead = false,
+                    canCancel = false,
+                    disable = { car = true, move = true },
+                    anim = { dict = 'gestures@f@standing@casual', clip = 'gesture_point' }
+                }) then
+                    TriggerServerEvent('qbx_drugs:server:sellCornerDrugs')
+                    hasTarget = false
+                    addToLastPed(ped)
+                    TaskWanderStandard(ped, 10.0, 10)
+                end
             elseif IsControlJustPressed(0, 47) then -- G
                 lib.hideTextUI()
                 textDrawn = false

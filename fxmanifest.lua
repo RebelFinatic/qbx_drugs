@@ -7,6 +7,13 @@ version '1.0.0'
 
 ox_lib 'locale'
 
+dependencies {
+    'ox_lib',
+    'qbx_core',
+    'ox_inventory',
+    'oxmysql'
+}
+
 shared_scripts {
     '@ox_lib/init.lua',
     '@qbx_core/modules/lib.lua',

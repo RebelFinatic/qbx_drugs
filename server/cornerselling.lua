@@ -64,7 +64,8 @@ lib.callback.register('qbx_drugs:server:getDrugOffer', function(source)
         math.random(3, 10) * offeredAmount
 
     -- Store offer server-side for validation
-    local offer = { chosen = chosenDrug, idx = randomDrug, amount = offeredAmount, total = totalPrice }
+    local shouldRob = math.random(1, 100) <= config.robberyChance
+    local offer = { chosen = chosenDrug, idx = randomDrug, amount = offeredAmount, total = totalPrice, shouldRob = shouldRob }
     activeOffers[source] = offer
 
     return offer

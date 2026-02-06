@@ -8,13 +8,7 @@ exports('GetDealers', function()
     return sharedConfig.dealers
 end)
 
-RegisterNetEvent('qbx_drugs:server:randomPoliceAlert', function()
-    local player = exports.qbx_core:GetPlayer(source)
-    if not player then return end
-    if config.policeCallChance >= math.random(1, 100) then
-        TriggerEvent('police:server:policeAlert', locale('info.possible_drug_dealing'), nil, player.PlayerData.source)
-    end
-end)
+
 
 RegisterNetEvent('qbx_drugs:server:requestDelivery', function(currentDealer)
     local src = source
@@ -103,6 +97,12 @@ RegisterNetEvent('qbx_drugs:server:successDelivery', function(inTime)
     if inTime then
         if invItemCount and invItemCount >= itemAmount then -- on time correct amount
             exports.ox_inventory:RemoveItem(src, item, itemAmount)
+
+            -- Police Alert Chance
+            if config.policeCallChance >= math.random(1, 100) then
+                TriggerEvent('police:server:policeAlert', locale('info.possible_drug_dealing'), nil, src)
+            end
+
             if copsOnline > 0 then
                 local copModifier = copsOnline * config.policeDeliveryModifier
                 if config.useMarkedBills then
@@ -179,38 +179,22 @@ lib.addCommand('dealers', {
 }, function(source)
     local dealersText = ''
     if sharedConfig.dealers ~= nil and next(sharedConfig.dealers) ~= nil then
-        for _, v in pairs(sharedConfig.dealers) do
-            dealersText = dealersText .. locale('info.list_dealers_name_prefix') .. v.name .. '<br>'
-        end
-        TriggerClientEvent('chat:addMessage', source, {
-            color = { 0, 0, 255 },
-            template = "<div class='chat-message advert'><div class='chat-message-body'><strong>" .. locale('info.list_dealers_title') .. "</strong><br><br> " .. dealersText .. "</div></div>",
-            args = {}
-        })
+        TriggerClientEvent('qbx_drugs:client:showDealerMenu', source, sharedConfig.dealers)
     else
         exports.qbx_core:Notify(source, locale('error.no_dealers'), 'error')
     end
 end)
 
-lib.addCommand('dealergoto', {
-    help = 'To teleport to dealer',
-    params = {
-        {
-            name = 'name',
-            type = 'string',
-            help = locale('info.dealergoto_command_help1_help'),
-            optional = false
-        },
-    },
-    restricted = 'group.admin'
-}, function(source, args)
-    local dealerName = args.name
+RegisterNetEvent('qbx_drugs:server:teleportToDealer', function(dealerName)
+    local src = source
+    if not IsPlayerAceAllowed(src, 'command') then return end
+
     if sharedConfig.dealers[dealerName] then
-        local ped = GetPlayerPed(source)
+        local ped = GetPlayerPed(src)
         SetEntityCoords(ped, sharedConfig.dealers[dealerName].coords.x, sharedConfig.dealers[dealerName].coords.y, sharedConfig.dealers[dealerName].coords.z, false, false, false, false)
-        exports.qbx_core:Notify(source, locale('success.teleported_to_dealer', dealerName), 'success')
+        exports.qbx_core:Notify(src, locale('success.teleported_to_dealer', dealerName), 'success')
     else
-        exports.qbx_core:Notify(source, locale('error.dealer_not_exists'), 'error')
+        exports.qbx_core:Notify(src, locale('error.dealer_not_exists'), 'error')
     end
 end)
 
