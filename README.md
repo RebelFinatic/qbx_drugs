@@ -24,6 +24,7 @@ A secure and advanced drug selling system for Qbox servers. This resource allows
     - `qbx_core`
     - `ox_lib`
     - `ox_inventory`
+    - `oxmysql`
     - `ox_target` (Optional, but recommended)
 
 ## Configuration Support
@@ -35,6 +36,9 @@ Everything you need to change is in the `config/` folder.
 - **`config/client.lua`**:
     - `usePhone`: Set to `true` to use `qb-phone` email. Set to `false` for notifications and auto-GPS.
     - Other settings: Police count, success chances, etc.
+- **`config/server.lua`**:
+    - `robberyChance`: Percentage chance for a local to rob the player during a sale.
+    - `policeCallChance`: Percentage chance for police to be alerted.
 
 ### Enabling "Third Eye" (Target)
 If you want to use `ox_target` (Alt-eye interaction) instead of button prompts:
@@ -44,5 +48,4 @@ If you want to use `ox_target` (Alt-eye interaction) instead of button prompts:
 ## Commands
 
 - `/sellcorner`: Toggles the "Sell Drugs" mode on/off.
-- `/dealers`: (Admin) See a list of all active dealers and their locations.
-- `/dealergoto [id]`: (Admin) Teleport directly to a dealer's location.
+- `/dealers`: (Admin) Opens a menu listing all active dealers. Select a dealer to teleport to their location.
